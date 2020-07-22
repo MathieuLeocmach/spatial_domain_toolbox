@@ -16,6 +16,30 @@ def conv3(signal, kernel, roi):
     """Quick and dirty implementation of convolution with a ROI."""
     return convolve(signal, kernel, mode='constant')[tuple(slice(a,b) for a,b in roi)]
 
+def conv_results2A(conv_results):
+    """Convert the N+1 dimensional result of convolution to the N+2 array of A matrices"""
+    N = conv_results.ndim -1
+    A = np.zeros(conv_results.shape[:-1]+[N,N])
+    #diagonal terms
+    for dim in range(N):
+        A[...,dim,dim] = conv_results[...,dim+2]
+    #off-diagonal terms
+    for k, (i,j) in enumerate(zip(*np.triu_indices(N,1))):
+        A[...,i,j] = conv_results[...,k+3]/2
+        A[...,j,i] = A[...,i,j]
+    return A
+
+def conv_results2b(conv_results):
+    """Convert the N+1 dimensional result of convolution to the N+1 array of b vectors"""
+    N = conv_results.ndim -1
+    return conv_results[...,1:N+1]
+
+def conv_results2c(conv_results):
+    """Convert the N+1 dimensional result of convolution to the N array of c scalars"""
+    N = conv_results.ndim -1
+    return conv_results[...,0]
+
+
 def make_Abc_fast(signal, spatial_size=9, region_of_interest=None, sigma=None, delta=None, certainty=None):
     """Compute A, b, and c parameters in up to four dimensions. The
 parameters relate to the local signal model
@@ -125,15 +149,6 @@ is less than N-dimensional, the singleton dimensions are removed.
         conv_results[:,0] = tmp
         del tmp
 
-        # Build A, b, and c.
-        # A, b, and c are obtained from the convolution results according to
-        # A=[2], b=[1], c=[0].
-        A = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[1,1])
-        b = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[1,])
-        A[:,0,0] = conv_results[:,2]
-        b[:,0] = conv_results[:,1]
-        c = conv_results[:,0]
-
     elif N==2:
         #Set up applicability and basis functions.
         applicability = a[None,:] * a[:,None]
@@ -188,20 +203,6 @@ is less than N-dimensional, the singleton dimensions are removed.
         conv_results[...,0] = tmp
         del tmp
 
-        # Build A, b, and c.
-        # A, b, and c are obtained from the convolution results according to
-        #   [3 5]    [1]
-        # A=[5 4], b=[2], c=[0].
-        # where the off-diagonal elements in A additionally are halved.
-        A = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[2,2])
-        b = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[2,])
-        A[...,0,0] = conv_results[...,3]
-        A[...,1,1] = conv_results[...,4]
-        A[...,0,1] = conv_results[...,5]/2
-        A[...,1,0] = A[...,0,1]
-        b[...,0] = conv_results[...,1]
-        b[...,1] = conv_results[...,2]
-        c = conv_results[...,0]
 
 #
 #     case 3
@@ -300,36 +301,6 @@ is less than N-dimensional, the singleton dimensions are removed.
 #     conv_results(:,:,:,1) = tmp;
 #     clear tmp;
 #
-#     % Build A, b, and c.
-#     %
-#     % A, b, and c are obtained from the convolution results according to
-#     %
-#     %   [5  8  9]    [2]
-#     % A=[8  6 10], b=[3], c=[1]
-#     %   [9 10  7]    [4]
-#     %
-#     % where the off-diagonal elements in A additionally are halved.
-#     %
-#
-#     A = zeros([diff(region_of_interest')+1 3 3]);
-#     b = zeros([diff(region_of_interest')+1 3]);
-#     A(:,:,:,1,1) = conv_results(:,:,:,5);
-#     A(:,:,:,2,2) = conv_results(:,:,:,6);
-#     A(:,:,:,3,3) = conv_results(:,:,:,7);
-#     A(:,:,:,1,2) = conv_results(:,:,:,8) / 2;
-#     A(:,:,:,1,3) = conv_results(:,:,:,9) / 2;
-#     A(:,:,:,2,3) = conv_results(:,:,:,10) / 2;
-#     A(:,:,:,2,1) = A(:,:,:,1,2);
-#     A(:,:,:,3,1) = A(:,:,:,1,3);
-#     A(:,:,:,3,2) = A(:,:,:,2,3);
-#     b(:,:,:,1) = conv_results(:,:,:,2);
-#     b(:,:,:,2) = conv_results(:,:,:,3);
-#     b(:,:,:,3) = conv_results(:,:,:,4);
-#     c = conv_results(:,:,:,1);
-#
-#     A = squeeze(A);
-#     b = squeeze(b);
-#     c = squeeze(c);
 #
 #
 #     case 4
@@ -471,45 +442,7 @@ is less than N-dimensional, the singleton dimensions are removed.
 #     conv_results(:,:,:,:,1) = tmp;
 #     clear tmp;
 #
-#     % Build A, b, and c.
-#     %
-#     % A, b, and c are obtained from the convolution results according to
-#     %
-#     %
-#     %   [6  10 11 12]    [2]
-#     %   [10  7 13 14]    [3]
-#     % A=[11 13  8 15], b=[4]. c=[1]
-#     %   [12 14 15  9]    [5]
-#     % where the off-diagonal elements in A additionally are halved.
-#     %
 #
-#     A = zeros([diff(region_of_interest')+1 4 4]);
-#     b = zeros([diff(region_of_interest')+1 4]);
-#     A(:,:,:,:,1,1) = conv_results(:,:,:,:,6);
-#     A(:,:,:,:,2,2) = conv_results(:,:,:,:,7);
-#     A(:,:,:,:,3,3) = conv_results(:,:,:,:,8);
-#     A(:,:,:,:,4,4) = conv_results(:,:,:,:,9);
-#     A(:,:,:,:,1,2) = conv_results(:,:,:,:,10) / 2;
-#     A(:,:,:,:,1,3) = conv_results(:,:,:,:,11) / 2;
-#     A(:,:,:,:,1,4) = conv_results(:,:,:,:,12) / 2;
-#     A(:,:,:,:,2,3) = conv_results(:,:,:,:,13) / 2;
-#     A(:,:,:,:,2,4) = conv_results(:,:,:,:,14) / 2;
-#     A(:,:,:,:,3,4) = conv_results(:,:,:,:,15) / 2;
-#     A(:,:,:,:,2,1) = A(:,:,:,:,1,2);
-#     A(:,:,:,:,3,1) = A(:,:,:,:,1,3);
-#     A(:,:,:,:,4,1) = A(:,:,:,:,1,4);
-#     A(:,:,:,:,3,2) = A(:,:,:,:,2,3);
-#     A(:,:,:,:,4,2) = A(:,:,:,:,2,4);
-#     A(:,:,:,:,4,3) = A(:,:,:,:,3,4);
-#     b(:,:,:,:,1) = conv_results(:,:,:,:,2);
-#     b(:,:,:,:,2) = conv_results(:,:,:,:,3);
-#     b(:,:,:,:,3) = conv_results(:,:,:,:,4);
-#     b(:,:,:,:,4) = conv_results(:,:,:,:,5);
-#     c = conv_results(:,:,:,:,1);
-#
-#     A = squeeze(A);
-#     b = squeeze(b);
-#     c = squeeze(c);
 #
 #
 #     otherwise
@@ -523,6 +456,9 @@ is less than N-dimensional, the singleton dimensions are removed.
 #     params.delta = delta;
 #     params.c = certainty;
 # end
+    A = conv_results2A(conv_results)
+    b = conv_results2b(conv_results)
+    c = conv_results2c(conv_results)
     A = np.squeeze(A)
     b = np.squeeze(b)
     c = np.squeeze(c)
