@@ -133,96 +133,76 @@ is less than N-dimensional, the singleton dimensions are removed.
         A[:,0,0] = conv_results[:,2]
         b[:,0] = conv_results[:,1]
         c = conv_results[:,0]
-        A = np.squeeze(A)
-        b = np.squeeze(b)
-        c = np.squeeze(c)
 
+    elif N==2:
+        #Set up applicability and basis functions.
+        applicability = a[None,:] * a[:,None]
+        x, y = np.meshgrid(np.arange(-n,n+1), np.arange(-n,n+1))
+        b = np.array([np.ones(x.shape), x, y, x**2, y**2, x*y])
+        nb = b.shape[0]
 
+        #Compute the inverse metric.
+        Q = np.zeros((nb, nb))
+        for i in range(nb):
+            for j in range(i,nb):
+                Q[i,j] = np.sum(b[i] * applicability * certainty * b[j])
+                Q[j,i] = Q[i,j]
+        del b, applicability, x, y
+        Qinv = np.linalg.inv(Q)
 
-#     case 2
-#     % Set up applicability and basis functions.
-#     applicability = a*a';
-#     [x,y] = ndgrid(-n:n);
-#     b = cat(3, ones(size(x)), x, y, x.*x, y.*y, x.*y);
-#     nb = size(b, 3);
-#
-#     % Compute the inverse metric.
-#     Q = zeros(nb, nb);
-#     for i = 1:nb
-#         for j = i:nb
-#         Q(i,j) = sum(sum(b(:,:,i).*applicability.*certainty.*b(:,:,j)));
-#         Q(j,i) = Q(i,j);
-#         end
-#     end
-#     clear b applicability x y
-#     Qinv = inv(Q);
-#
-#     % Convolutions in the y-direction.
-#     kernely0 = a';
-#     kernely1 = (-n:n).*a';
-#     kernely2 = (-n:n).^2.*a';
-#     roiy = region_of_interest+[-n n;0 0];
-#     roiy(:,1) = max(roiy(:,1), ones(2,1));
-#     roiy(:,2) = min(roiy(:,2), size(signal)');
-#     conv_y0 = conv3(signal, kernely0, roiy);
-#     conv_y1 = conv3(signal, kernely1, roiy);
-#     conv_y2 = conv3(signal, kernely2, roiy);
-#
-#     % Convolutions in the x-direction.
-#     kernelx0 = kernely0(:);
-#     kernelx1 = kernely1(:);
-#     kernelx2 = kernely2(:);
-#     roix = region_of_interest;
-#     roix = roix(1:ndims(conv_y0),:);
-#     roix(2:end,:) = roix(2:end,:)+1-repmat(roix(2:end,1), [1 2]);
-#     conv_results = zeros([diff(region_of_interest')+1 6]);
-#     conv_results(:,:,1) = conv3(conv_y0, kernelx0, roix); % y0x0
-#     conv_results(:,:,2) = conv3(conv_y0, kernelx1, roix); % y0x1
-#     conv_results(:,:,4) = conv3(conv_y0, kernelx2, roix); % y0x2
-#     clear conv_y0
-#     conv_results(:,:,3) = conv3(conv_y1, kernelx0, roix); % y1x0
-#     conv_results(:,:,6) = conv3(conv_y1, kernelx1, roix); % y1x1
-#     clear conv_y1
-#     conv_results(:,:,5) = conv3(conv_y2, kernelx0, roix); % y2x0
-#     clear conv_y2
-#
-#     % Apply the inverse metric.
-#     tmp = Qinv(1,1)*conv_results(:,:,1) + ...
-#           Qinv(1,4)*conv_results(:,:,4) + ...
-#           Qinv(1,5)*conv_results(:,:,5);
-#     conv_results(:,:,2) = Qinv(2,2)*conv_results(:,:,2);
-#     conv_results(:,:,3) = Qinv(3,3)*conv_results(:,:,3);
-#     conv_results(:,:,4) = Qinv(4,4)*conv_results(:,:,4) + ...
-#                   Qinv(4,1)*conv_results(:,:,1);
-#     conv_results(:,:,5) = Qinv(5,5)*conv_results(:,:,5) + ...
-#                   Qinv(5,1)*conv_results(:,:,1);
-#     conv_results(:,:,6) = Qinv(6,6)*conv_results(:,:,6);
-#     conv_results(:,:,1) = tmp;
-#     clear tmp;
-#
-#     % Build A, b, and c.
-#     %
-#     % A, b, and c are obtained from the convolution results according to
-#     %
-#     %   [4  6]    [2]
-#     % A=[6  5], b=[3], c=[1].
-#     %
-#     % where the off-diagonal elements in A additionally are halved.
-#     %
-#
-#     A = zeros([diff(region_of_interest')+1 2 2]);
-#     b = zeros([diff(region_of_interest')+1 2]);
-#     A(:,:,1,1) = conv_results(:,:,4);
-#     A(:,:,2,2) = conv_results(:,:,5);
-#     A(:,:,1,2) = conv_results(:,:,6) / 2;
-#     A(:,:,2,1) = A(:,:,1,2);
-#     b(:,:,1) = conv_results(:,:,2);
-#     b(:,:,2) = conv_results(:,:,3);
-#     c = conv_results(:,:,1);
-#
-#     A = squeeze(A);
-#     b = squeeze(b);
-#     c = squeeze(c);
+        #Convolutions in the y-direction.
+        kernely0 = a
+        kernely1 = np.arange(-n,n+1)*a
+        kernely2 = np.arange(-n,n+1)**2 *a
+        roiy = region_of_interest + [[-n, n], [0, 0]]
+        roiy[:,0] = np.maximum(roiy[:,0], 0)
+        roiy[:,1] = np.minimum(roiy[:,1], len(signal))
+        convy_results = np.zeros(np.diff(roiy, axis=1)[:,0].astype(int).tolist()+[3])
+        for i, kern in enumerate([kernely0, kernely1, kernely2]):
+            convy_results[...,i] = conv3(signal, kern[:,None], roiy)
+
+        #Convolutions in the x-direction.
+        kernelx0 = kernely0[None,:]
+        kernelx1 = kernely0[None,:]
+        kernelx2 = kernely0[None,:]
+        roix = region_of_interest
+        roix = roix[:convy_results.ndim]
+        #ensures the roi along the x direction starts at 0, since we are working on convy_results that has already been trimmed
+        roix[1:] = roix[1:] - np.repeat(roix[1:,0,None], 2, axis=1)
+        conv_results = np.zeros(np.diff(region_of_interest, axis=1)[:,0].astype(int).tolist()+[6])
+        conv_results[...,0] = conv3(convy_results[...,0], kernelx0, roix) # y0x0
+        conv_results[...,1] = conv3(convy_results[...,0], kernelx1, roix) # y0x1
+        conv_results[...,3] = conv3(convy_results[...,0], kernelx2, roix) # y0x2
+        conv_results[...,2] = conv3(convy_results[...,1], kernelx0, roix) # y1x0
+        conv_results[...,5] = conv3(convy_results[...,1], kernelx1, roix) / 2 # y1x1
+        conv_results[...,4] = conv3(convy_results[...,2], kernelx0, roix) # y2x0
+        del convy_results
+
+        # Apply the inverse metric.
+        tmp = Qinv[0,0] * conv_results[...,0] + Qinv[0,3] * conv_results[...,3] + Qinv[0,4] * conv_results[...,4]
+        conv_results[...,1] = Qinv[1,1] * conv_results[...,1]
+        conv_results[...,2] = Qinv[2,2] * conv_results[...,2]
+        conv_results[...,3] = Qinv[3,3] * conv_results[...,3] + Qinv[3,0] * conv_results[...,0]
+        conv_results[...,4] = Qinv[4,4] * conv_results[...,4] + Qinv[4,0] * conv_results[...,0]
+        conv_results[...,5] = Qinv[5,5] * conv_results[...,5]
+        conv_results[...,0] = tmp
+        del tmp
+
+        # Build A, b, and c.
+        # A, b, and c are obtained from the convolution results according to
+        #   [3 5]    [1]
+        # A=[5 4], b=[2], c=[0].
+        # where the off-diagonal elements in A additionally are halved.
+        A = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[2,2])
+        b = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[2,])
+        A[...,0,0] = conv_results[...,3]
+        A[...,1,1] = conv_results[...,4]
+        A[...,0,1] = conv_results[...,5]/2
+        A[...,1,0] = A[...,0,1]
+        b[...,0] = conv_results[...,1]
+        b[...,1] = conv_results[...,2]
+        c = conv_results[...,0]
+
 #
 #     case 3
 #     % Set up applicability and basis functions.
@@ -543,4 +523,7 @@ is less than N-dimensional, the singleton dimensions are removed.
 #     params.delta = delta;
 #     params.c = certainty;
 # end
+    A = np.squeeze(A)
+    b = np.squeeze(b)
+    c = np.squeeze(c)
     return A, b, c
