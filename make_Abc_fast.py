@@ -456,6 +456,7 @@ is less than N-dimensional, the singleton dimensions are removed.
 #     params.delta = delta;
 #     params.c = certainty;
 # end
+    # Build A, b, and c from the convolution results
     A = conv_results2A(conv_results)
     b = conv_results2b(conv_results)
     c = conv_results2c(conv_results)
