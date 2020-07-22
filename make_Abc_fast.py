@@ -19,7 +19,7 @@ def conv3(signal, kernel, roi):
 def conv_results2A(conv_results):
     """Convert the N+1 dimensional result of convolution to the N+2 array of A matrices"""
     N = conv_results.ndim -1
-    A = np.zeros(conv_results.shape[:-1]+[N,N])
+    A = np.zeros(conv_results.shape[:-1]+(N,N))
     #diagonal terms
     for dim in range(N):
         A[...,dim,dim] = conv_results[...,dim+2]
