@@ -23,18 +23,20 @@ Orientation and Motion Estimation".
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for j in range(sides[1]):
         for i in range(sides[0]):
-            di = displacement[i,j,0]
+            #truncate the rounded displacement so that no pixel goes out
+            di = floor(0.5 + displacement[i,j,0])
             if i+di < 0:
                 di = -i
             if i+di > sides[0]:
                 di = sides[0] - i -1
-            dj = displacement[i,j,1]
+            dj = floor(0.5 + displacement[i,j,1])
             if j+dj < 0:
                 dj = -j
             if j+dj > sides[1]:
                 dj = sides[1] - j -1
+            # advected average of the two A matrices (Eq. 7.32)
             A[i,j] = (A1[i,j] + A2[i+di,j+dj]) / 2
-            AA = np.squeeze(A[i,j])
-            bb2 = np.squeeze(b2[i+di,j+dj]) - 2 * np.matmul(AA, [di,dj])
+            # advected average of the two vectors b (Eq. 7.33)
+            bb2 = b2[i+di,j+dj] - 2 * np.matmul(A[i,j], [di,dj])
             b[i,j] = -(bb2 - b1[i,j]) / 2
     return  A, b
