@@ -6,10 +6,7 @@
 Converted to Python by Mathieu Leocmach
 """
 
-import warnings
-import math
 import numpy as np
-import numpy.matlib
 
 from make_Abc_fast import conv_results2A, conv_results2b, conv_results2c, make_Abc_fast
 
