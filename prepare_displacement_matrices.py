@@ -5,7 +5,6 @@
 
 Converted to Python by Mathieu Leocmach
 """
-from math import floor
 import numpy as np
 from numba import jit
 
@@ -15,30 +14,36 @@ def prepare_displacement_matrices(A1, b1, A2, b2, displacement=None):
 (7.32) and (7.33) in Gunnar Farnebäck's thesis "Polynomial Expansion for
 Orientation and Motion Estimation".
 """
-    # Numpy implementation, copied on the slow MATLAB implementation
-    # using the c implementation in the mex-file should be much faster
-    sides = A1.shape[:-2]
+    shape = A1.shape[:-2]
+    N = A1.shape[-1]
     if displacement is None:
-        displacement = np.zeros(sides + (2,))
+        displacement = np.zeros(shape + (N,))
+    #flatten all spatial dimensions of A2 and b2
+    dimprod = 1
+    for s in shape:
+        dimprod *= s
+    A22 = A2.reshape((dimprod, N, N))
+    b22 = b2.reshape((dimprod, N))
+    #prepare strides to be able to flatten indices
+    strides = (np.array(A2.strides[:-2]) / (N*N*A2.itemsize)).astype(np.int64)
+
     A = np.zeros(A1.shape)
     Delta_b = np.zeros(b1.shape)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
-    for j in range(sides[1]):
-        for i in range(sides[0]):
-            #truncate the rounded displacement so that no pixel goes out
-            di = floor(0.5 + displacement[i,j,0])
-            if i+di < 0:
-                di = -i
-            if i+di > sides[0]:
-                di = sides[0] - i -1
-            dj = floor(0.5 + displacement[i,j,1])
-            if j+dj < 0:
-                dj = -j
-            if j+dj > sides[1]:
-                dj = sides[1] - j -1
-            # advected average of the two A matrices (Eq. 7.32)
-            A[i,j] = (A1[i,j] + A2[i+di,j+dj]) / 2
-            # advected average of the two vectors b (Eq. 7.33)
-            bb2 = b2[i+di,j+dj] - 2 * A[i,j] @ np.array([di,dj])
-            Delta_b[i,j] = -(bb2 - b1[i,j]) / 2
+    for index in np.ndindex(shape):
+        #truncate the rounded displacement so that no pixel goes out
+        d = np.floor(0.5 + displacement[index]).astype(np.int64)
+        for dim in range(N):
+            d[dim] = min(max(d[dim], -index[dim]), shape[dim] -index[dim] -1)
+        #flatten advected index
+        index2 = 0
+        for dim in range(N):
+            index2 += (d[dim] + index[dim]) * strides[dim]
+
+        # advected average of the two A matrices (Eq. 7.32)
+        A[index] = (A1[index] + A22[index2]) / 2
+        # advected difference of the two vectors b (Eq. 7.33)
+        df = d.astype(A.dtype)
+        bb2 = b22[index2] - 2 * A[index] @ df
+        Delta_b[index] = -(bb2 - b1[index]) / 2
     return  A, Delta_b
