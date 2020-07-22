@@ -11,6 +11,8 @@ import math
 import numpy as np
 import numpy.matlib
 
+from make_Abc_fast import conv_results2A, conv_results2b, conv_results2c, make_Abc_fast
+
 def get_border(shape, width):
     """Make a mask of the borders for an image of given shape and a given
     border width"""
@@ -78,30 +80,12 @@ displacement estimates.
                 cin[border] *= 0.1
 
                 r1 = polyexp(im1, cin, 'quadratic', kernelsize1)
-                A1 = np.concatenate((
-                    np.concatenate((
-                        r1[...,3,None,None], r1[...,5,None,None]/2
-                    ), axis=-2),
-                    np.concatenate((
-                        r1[...,5,None,None]/2, r1[...,4,None,None]
-                    ), axis=-2),
-                ), axis=-1)
-                b1 = np.concatenate((
-                    r1[...,1,None], r1[...,2,None,None]
-                ), axis=-1)
-
+                A1 = conv_results2A(r1)
+                b1 = onv_results2b(r1)
+                
                 r2 = polyexp(im2, cin, 'quadratic', kernelsize1)
-                A2 = np.concatenate((
-                    np.concatenate((
-                        r2[...,3,None,None], r2[...,5,None,None]/2
-                    ), axis=-2),
-                    np.concatenate((
-                        r2[...,5,None,None]/2, r2[...,4,None,None]
-                    ), axis=-2),
-                ), axis=-1)
-                b2 = np.concatenate((
-                    r2[...,1,None], r2[...,2,None,None]
-                ), axis=-1)
+                A2 = conv_results2A(r2)
+                b2 = onv_results2b(r2)
         d0 = d
         sigma = 0.15 * (kernelsize2 - 1)
         A, b = prepare_displacement_matrices(A1, b1, A2, b2, d0)
