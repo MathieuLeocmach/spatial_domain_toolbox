@@ -5,9 +5,11 @@
 
 Converted to Python by Mathieu Leocmach
 """
-
+from math import floor
 import numpy as np
+from numba import jit
 
+@jit(nopython=True)
 def prepare_displacement_matrices(A1, b1, A2, b2, displacement=None):
     """Compute matrices used for displacement estimation as defined by equations
 (7.32) and (7.33) in Gunnar Farnebäck's thesis "Polynomial Expansion for
@@ -19,7 +21,7 @@ Orientation and Motion Estimation".
     if displacement is None:
         displacement = np.zeros(sides + (2,))
     A = np.zeros(A1.shape)
-    b = np.zeros(b1.shape)
+    Delta_b = np.zeros(b1.shape)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for j in range(sides[1]):
         for i in range(sides[0]):
@@ -37,6 +39,6 @@ Orientation and Motion Estimation".
             # advected average of the two A matrices (Eq. 7.32)
             A[i,j] = (A1[i,j] + A2[i+di,j+dj]) / 2
             # advected average of the two vectors b (Eq. 7.33)
-            bb2 = b2[i+di,j+dj] - 2 * np.matmul(A[i,j], [di,dj])
-            b[i,j] = -(bb2 - b1[i,j]) / 2
-    return  A, b
+            bb2 = b2[i+di,j+dj] - 2 * A[i,j] @ np.array([di,dj])
+            Delta_b[i,j] = -(bb2 - b1[i,j]) / 2
+    return  A, Delta_b
