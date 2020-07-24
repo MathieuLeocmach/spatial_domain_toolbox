@@ -102,6 +102,14 @@ displacement values.
 	#A.T * Delta_b, but A is symmetric
 	Ab = A @ Delta_b
 
+	# # define base polynomials
+	# if model == 'constant':
+	# 	S = [1]
+	# elif model == 'affine':
+	# 	S = [1,] + [np.arange(s)[(slice(None),)+(np.newaxis,)*(N-1-dim)] for dim, s in enumerate(shape)]
+	# elif model == 'eightparam':
+	# 	pass
+
 	if model == 'constant':
 		# 2D code exploiting symmetries
 		# bundle together all the useful coefficients of A.T * A
@@ -193,64 +201,7 @@ displacement values.
 
 
 
-#  case 'affine'
-#   [x,y] = ndgrid(1:sides(1), 1:sides(2));
-# %  [x,y] = meshgrid(1:sides(2), 1:sides(1));
-#   Q = zeros([sides 24]);
-#   Q(:,:,1)  = A(:,:,1,1).^2 + A(:,:,1,2).^2;                % (1,1)
-#   Q(:,:,2)  = Q(:,:,1).*x;                                  % (1,2) (2,1)
-#   Q(:,:,3)  = Q(:,:,1).*y;                                  % (1,3) (3,1)
-#   Q(:,:,4)  = (A(:,:,1,1) + A(:,:,2,2)).*A(:,:,1,2);        % (1,4) (4,1)
-#   Q(:,:,5)  = Q(:,:,4).*x;                      % (1,5) (5,1) (2,4) (4,2)
-#   Q(:,:,6)  = Q(:,:,4).*y;                      % (1,6) (6,1) (3,4) (4,3)
-#   Q(:,:,7)  = Q(:,:,2).*x;				    % (2,2)
-#   Q(:,:,8)  = Q(:,:,2).*y;				    % (2,3) (3,2)
-#   Q(:,:,9)  = Q(:,:,5).*x;				    % (2,5) (5,2)
-#   Q(:,:,10) = Q(:,:,5).*y;                      % (2,6) (6,2) (3,5) (5,3)
-#   Q(:,:,11) = Q(:,:,3).*y;				    % (3,3)
-#   Q(:,:,12) = Q(:,:,6).*y;				    % (3,6) (6,3)
-#   Q(:,:,13) = A(:,:,1,2).^2 + A(:,:,2,2).^2;                % (4,4)
-#   Q(:,:,14) = Q(:,:,13).*x;				    % (4,5) (5,4)
-#   Q(:,:,15) = Q(:,:,13).*y;				    % (4,6) (6,4)
-#   Q(:,:,16) = Q(:,:,14).*x;				    % (5,5)
-#   Q(:,:,17) = Q(:,:,14).*y;				    % (5,6) (6,5)
-#   Q(:,:,18) = Q(:,:,15).*y;				    % (6,6)
-#
-#   Q(:,:,19) = A(:,:,1,1).*b(:,:,1) + A(:,:,1,2).*b(:,:,2);  % (1)
-#   Q(:,:,20) = Q(:,:,19).*x;				    % (2)
-#   Q(:,:,21) = Q(:,:,19).*y;				    % (3)
-#   Q(:,:,22) = A(:,:,1,2).*b(:,:,1) + A(:,:,2,2).*b(:,:,2);  % (4)
-#   Q(:,:,23) = Q(:,:,22).*x;				    % (5)
-#   Q(:,:,24) = Q(:,:,22).*y;				    % (6)
-#
-#
-#   % Compute displacement from affine fields in each neighborhood.
-#   app = gaussian_app(kernelsize, 1, sigma);
-#   cinaver = conv3(conv3(cin, app), app');
-#   Q = conv3(conv3(Q.*repmat(cin, [1 1 24]), app), app') ./ ...
-#       (eps + repmat(cinaver, [1 1 24]));
-#   % We build the equation system as a quadratic form that min_quadform
-#   % can solve. Slightly wasteful but effective.
-#   Q = reshape(Q(:,:,...
-# 		[ 1  2  3  4  5  6 19
-# 		  2  7  8  5  9 10 20
-# 		  3  8 11  6 10 12 21
-# 		  4  5  6 13 14 15 22
-# 		  5  9 10 14 16 17 23
-# 		  6 10 12 15 17 18 24
-# 		 19 20 21 22 23 24 24]),[sides 7 7]);
-#
-#   % Solve the equation Qv=q.
-#   p = -min_quadform(Q);
-#   displacement = zeros([sides 2]);
-#   displacement(:,:,1) = sum(p(:,:,1:3).*cat(3, ones(sides), x, y), 3);
-#   displacement(:,:,2) = sum(p(:,:,4:6).*cat(3, ones(sides), x, y), 3);
-#
-#   if nargout > 1
-#       q = b(:,:,1).*b(:,:,1) + b(:,:,2).*b(:,:,2);
-#       q = conv3(conv3(q.*cin, app), app') ./ (eps + cinaver);
-#       cout = q - sum(p .* Q(:,:,1:6,7), 3);
-#   end
+
 #
 #  case 'eightparam'
 #   [x,y] = ndgrid(1:sides(1), 1:sides(2));
