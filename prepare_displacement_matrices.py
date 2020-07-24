@@ -13,6 +13,22 @@ def prepare_displacement_matrices(A1, b1, A2, b2, displacement=None):
     """Compute matrices used for displacement estimation as defined by equations
 (7.32) and (7.33) in Gunnar Farnebäck's thesis "Polynomial Expansion for
 Orientation and Motion Estimation".
+
+A1,b1: Local polynomial expension coefficients at time 1. A1 is a N+2
+dimensional array, where the first N indices indicates the position in the
+signal and the last two contains the matrix for each point. In the same way, b1
+is a N+1 dimensional array. Such arrays can be obtained via `make_Abc_fast`
+
+A2,b2: Local polynomial expension coefficients at time 2.
+
+displacement: Initial guess of the displacement field.
+
+----
+Returns
+
+A: Advected average of A1 and A2 matrices (Eq. 7.32)
+
+Delta_b: advected difference of b2 and b1 (Eq. 7.33)
 """
     shape = A1.shape[:-2]
     N = A1.shape[-1]
