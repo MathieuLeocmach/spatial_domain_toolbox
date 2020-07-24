@@ -34,6 +34,35 @@ params: A collection of optimal parameters, having the same size as b.
         params[index] = lstsq(A[index], b[index])[0]
     return params
 
+def normalized_conv(coeff, cin, app, cinaver=None):
+	"""Normalized convolution of a scalar.
+
+coeff: N-dimensional array of scalars
+
+cin: Input certainty (N-dimensional array of scalars).
+
+app: applicability, supposed separable (1D kernel)
+
+cinaver: certainty local average weighted by applicability. Can be computed if not given.
+"""
+	if cinaver is None:
+		cinaver = np.copy(cin)
+		for dim in range(N):
+			#convolution with (separable) applicability in each dimension
+			cinaver = conv3(cinaver, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+			#machine epsilon (to avoid division by zero)
+			cinaver += np.finfo(coeff.dtype).eps
+	#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
+	coeff *= cin
+	#convolution with (separable) applicability in each dimension
+	for dim in range(N):
+		coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+	#normalizing convolution
+	coeff /= cinaver
+	return coeff
+
+
+
 def compute_displacement(A, Delta_b, kernelsize, sigma, cin, model):
 	"""Compute displacement estimates according to equation (7.30) in Gunnar
 Farnebäck's thesis "Polynomial Expansion for Orientation and Motion	Estimation".
@@ -59,15 +88,15 @@ displacement values.
 	"""
 	shape = A.shape[:-2]
 	N = len(shape)
-	#machine epsilon (to avoid division by zero)
-	eps = np.finfo(A.dtype).eps
 	#applicability
 	app = gaussian_app(kernelsize, 1, sigma) #to do
 	#certainty local average weighted by applicability
 	cinaver = np.copy(cin)
 	for dim in range(N):
 		cinaver = conv3(cinaver, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
-
+	#machine epsilon (to avoid division by zero)
+	eps = np.finfo(A.dtype).eps
+	cinaver += eps
 	#A.T * A, but A is symmetric
 	AA = A @ A
 	#A.T * Delta_b, but A is symmetric
@@ -107,7 +136,7 @@ displacement values.
 		# Compute output certainty (Eq. 7.24)
 		# as Delta_b.T * Delta_b - d * q
 		q = Delta_b[...,0]**2 + Delta_b[...,1]**2
-		q = conv3(conv3(q*cin, app), app.T) / (eps + cinaver)
+		q = conv3(conv3(q*cin, app), app.T) / cinaver
 		cout = q - d*displacement[...,0] - e*displacement[...,1]
 		return displacement, cout
 
@@ -126,14 +155,7 @@ displacement values.
 		for k,l in zip(*np.triu_indices(N)):
 			a = AA[...,k,l]
 			for i,j in zip(*np.triu_indices(len(S))):
-				coeff = a * S[i] * S[j]
-				#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
-				coeff *= cin
-				#convolution with (separable) applicability in each dimension
-				for dim in range(N):
-					coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
-				#normalizing convolution
-				coeff /= (eps + cinaver)
+				coeff = normalized_conv(a * S[i] * S[j], cin, app, cinaver)
 				#fill submatrix of Q with coefficients
 				Q[...,len(S)*k+i, len(S)*l+j] = coeff
 				if i != j:
@@ -150,16 +172,8 @@ displacement values.
 		for k in range(N):
 			a = Ab[...,k]
 			for i in range(len(S)):
-				coeff = a * S[i]
-				#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
-				coeff *= cin
-				#convolution with (separable) applicability in each dimension
-				for dim in range(N):
-					coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
-				#normalizing convolution
-				coeff /= (eps + cinaver)
 				#fill subvector of q with coefficients
-				q[...,len(S)*k+i] = coeff
+				q[...,len(S)*k+i] = normalized_conv(a * S[i], cin, app, cinaver)
 
 
 		# Solve the equation Qp=q.
@@ -172,14 +186,7 @@ displacement values.
 
 		# Compute output certainty (Eq. 7.24)
 		# as Delta_b.T * Delta_b - displacement * q
-		coeff = np.sum(Delta_b**2, -1)
-		#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
-		coeff *= cin
-		#convolution with (separable) applicability in each dimension
-		for dim in range(N):
-			coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
-		#normalizing convolution
-		coeff /= (eps + cinaver)
+		coeff = normalized_conv(np.sum(Delta_b**2, -1), cin, app, cinaver)
 		cout = coeff - np.sum(p*q, -1)
 
 		return displacement, cout
