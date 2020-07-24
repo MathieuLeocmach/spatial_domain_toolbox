@@ -7,7 +7,32 @@ Converted to Python by Mathieu Leocmach
 """
 
 import numpy as np
+from scipy.linalg import lstsq
+from numba import jit
 from make_Abc_fast import conv3
+
+@jit(nopython=True)
+def lstsq_ND(A, b):
+    """Compute the least square solution to Ax = b at each point in space.
+
+A: A (N+2) dimensional array of (MxK) matrices
+
+b: A (N+1) dimensional array of (M,) vectors
+
+----
+Returns
+
+params: A collection of optimal parameters, having the same size as b.
+"""
+    assert A.shape[-2] == b.shape[-1]
+    shape = A.shape[:-2]
+    #Create the output array.
+    params = np.zeros_like(b)
+
+    for index in np.ndindex(shape):
+        #compute least square coefficients so that |A*params -b| is minimized
+        params[index] = lstsq(A[index], b[index])[0]
+    return params
 
 def compute_displacement(A, Delta_b, kernelsize, sigma, cin, model):
 	"""Compute displacement estimates according to equation (7.30) in Gunnar
@@ -33,8 +58,20 @@ cout: Computed (reversed) confidence value. Small values indicate more reliable
 displacement values.
 	"""
 	shape = A.shape[:-2]
+	N = len(shape)
 	#machine epsilon (to avoid division by zero)
 	eps = np.finfo(A.dtype).eps
+	#applicability
+	app = gaussian_app(kernelsize, 1, sigma) #to do
+	#certainty local average weighted by applicability
+	cinaver = np.copy(cin)
+	for dim in range(N):
+		cinaver = conv3(cinaver, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+
+	#A.T * A, but A is symmetric
+	AA = A @ A
+	#A.T * Delta_b, but A is symmetric
+	Ab = A @ Delta_b
 
 	if model == 'constant':
 		# 2D code exploiting symmetries
@@ -47,10 +84,7 @@ displacement values.
 		Q[...,3] = A[...,0,0]*Delta_b[...,0] + A[...,0,1]*Delta_b[...,1]
 		Q[...,4] = A[...,0,1]*Delta_b[...,0] + A[...,1,1]*Delta_b[...,1]
 
-		#applicability
-		app = gaussian_app(kernelsize, 1, sigma) #to do
-		#certainty local average weighted by applicability
-		cinaver = conv3(conv3(cin, app), app.T)
+
 		#normalized convolution of the coefficients to obtain a local average weighted by applicability and certainty
 		Q = conv3(conv3(Q*cin[...,None]), app), app.T) / (eps + cinaver[...,None])
 
@@ -78,9 +112,77 @@ displacement values.
 		return displacement, cout
 
 	elif model == 'affine':
-		#2D code
-		x, y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]))
+		# define base polynomials (here affine)
+		S = [1,] + [np.arange(s)[(slice(None),)+(np.newaxis,)*(N-1-dim)] for dim, s in enumerate(shape)]
+		#S.T * A.T * A * S = S.T * AA * S
+		Q = np.zeros(shape+(N*len(S),N*len(S)))
+		# Q is composed of (N,N) submatrices of shape (len(S),len(S)),
+		# each symmetric and corresponding to an element of AA (itself symmetric).
+		# Thus there are a lot of repeated coefficients.
+		# Since the calculation of each coefficient is heavy (involves spatial convolution)
+		# we will compute each coefficient only once and then take advantage of symmetries
 
+		#upper triangular coefficients of AA, and corresponding submatrices of Q
+		for k,l in zip(*np.triu_indices(N)):
+			a = AA[...,k,l]
+			for i,j in zip(*np.triu_indices(len(S))):
+				coeff = a * S[i] * S[j]
+				#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
+				coeff *= cin
+				#convolution with (separable) applicability in each dimension
+				for dim in range(N):
+					coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+				#normalizing convolution
+				coeff /= (eps + cinaver)
+				#fill submatrix of Q with coefficients
+				Q[...,len(S)*k+i, len(S)*l+j] = coeff
+				if i != j:
+					Q[...,len(S)*k+j, len(S)*l+i] = coeff
+			#symmetry between submatrices
+			if k != l:
+				Q[...,len(S)*l:len(S)*(l+1), len(S)*k:len(S)*(k+1)] = Q[..., len(S)*k:len(S)*(k+1), len(S)*l:len(S)*(l+1)]
+
+		# S.T * A.T * Delta_b = S.T * Ab
+		q = np.zeros(shape+(N*len(S),))
+		# q is composed of (N,) subvectors of shape (len(S),),
+		# each corresponding to an element of Ab.
+		# Here there is no symmetry involved, but we follow the same procedure as in Q for clarity
+		for k in range(N):
+			a = Ab[...,k]
+			for i in range(len(S)):
+				coeff = a * S[i]
+				#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
+				coeff *= cin
+				#convolution with (separable) applicability in each dimension
+				for dim in range(N):
+					coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+				#normalizing convolution
+				coeff /= (eps + cinaver)
+				#fill subvector of q with coefficients
+				q[...,len(S)*k+i] = coeff
+
+
+		# Solve the equation Qp=q.
+		p = lstsq_ND(Q, q)
+		#convert solution to displacement by projecting on the base functions
+		displacement = np.zeros(shape+(N,))
+		for dim in range(N):
+			for i in range(len(S)):
+				displacement[...,dim] += p[...,len(S)*dim + i] * S[i]
+
+		# Compute output certainty (Eq. 7.24)
+		# as Delta_b.T * Delta_b - displacement * q
+		coeff = np.sum(Delta_b**2, -1)
+		#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
+		coeff *= cin
+		#convolution with (separable) applicability in each dimension
+		for dim in range(N):
+			coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+		#normalizing convolution
+		coeff /= (eps + cinaver)
+		cout = coeff - np.sum(p*q, -1)
+
+		return displacement, cout
 
 
 
