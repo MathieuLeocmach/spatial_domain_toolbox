@@ -9,6 +9,7 @@ import numpy as np
 from scipy.linalg import lstsq
 from numba import jit
 
+@jit(nopython=True)
 def min_quadform(Qtot):
     """Minimize quadratic forms according to equations 6.20 -- 6.24 in Gunnar
 Farnebäck's thesis "Polynomial Expansion for Orientation and Motion	Estimation".
