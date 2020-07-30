@@ -7,7 +7,7 @@ Converted to Python by Mathieu Leocmach
 """
 
 import numpy as np
-from scipy.linalg import lstsq
+from numpy.linalg import lstsq
 from numba import jit
 from make_Abc_fast import conv3
 from gaussian_app import gaussian_app
