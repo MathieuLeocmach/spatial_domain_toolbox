@@ -32,12 +32,12 @@ def conv_results2A(conv_results):
 def conv_results2b(conv_results):
     """Convert the N+1 dimensional result of convolution to the N+1 array of b vectors"""
     N = conv_results.ndim -1
-    return conv_results[...,1:N+1]
+    return np.ascontiguousarray(conv_results[...,1:N+1])
 
 def conv_results2c(conv_results):
     """Convert the N+1 dimensional result of convolution to the N array of c scalars"""
     N = conv_results.ndim -1
-    return conv_results[...,0]
+    return np.ascontiguousarray(conv_results[...,0])
 
 
 def make_Abc_fast(signal, spatial_size=9, region_of_interest=None, sigma=None, delta=None, certainty=None):
