@@ -49,8 +49,9 @@ c: Estimated (reversed) confidence value. Small values indicate more reliable
 displacement estimates.
     """
     assert len(kernelsizes1) == len(kernelsizes2), 'kernelsizes1 and kernelsizes2 must have the same length'
+    N = im1.ndim
     if d0 is None:
-        d0 = np.zeros(im1.shape+(2,))
+        d0 = np.zeros(im1.shape+(N,))
     d = d0
 
     for k, (kernelsize1, kernelsize2) in enumerate(zip(kernelsizes1, kernelsizes2)):
