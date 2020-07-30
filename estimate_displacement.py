@@ -10,6 +10,7 @@ import numpy as np
 
 from make_Abc_fast import conv_results2A, conv_results2b, conv_results2c, make_Abc_fast
 from prepare_displacement_matrices import prepare_displacement_matrices
+from compute_displacement import compute_displacement
 
 def get_border(shape, width):
     """Make a mask of the borders for an image of given shape and a given
