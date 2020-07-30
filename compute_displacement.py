@@ -10,6 +10,7 @@ import numpy as np
 from scipy.linalg import lstsq
 from numba import jit
 from make_Abc_fast import conv3
+from gaussian_app import gaussian_app
 
 @jit(nopython=True)
 def lstsq_ND(A, b):
@@ -123,7 +124,7 @@ displacement values.
 
 
 		#normalized convolution of the coefficients to obtain a local average weighted by applicability and certainty
-		Q = conv3(conv3(Q*cin[...,None]), app), app.T) / (eps + cinaver[...,None])
+		Q = conv3(conv3(Q*cin[...,None], app), app.T) / (eps + cinaver[...,None])
 
 		# Solve the equation Qv=q. (Eq. 7.23)
 		# where v is the unknown displacement, Q = A.T * A and q = A.T * Delta_b
