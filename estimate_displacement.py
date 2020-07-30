@@ -61,7 +61,7 @@ displacement estimates.
         if kernelsize1 != last_kernelsize1:
             if method == 'fast':
                 A1, b1, c1 = make_Abc_fast(im1, kernelsize1)
-                A2, b2, c2 = make_Abc_fast(im2, kernelsize2)
+                A2, b2, c2 = make_Abc_fast(im2, kernelsize1)
                 #Ad hoc deweighting of expansion coefficients close to the border.
                 cin = np.ones(im1.shape)
                 half = int(kernelsize1//2)
