@@ -12,9 +12,12 @@ import numpy as np
 import numpy.matlib
 from scipy.ndimage import convolve
 
-def conv3(signal, kernel, roi):
+def conv3(signal, kernel, roi=None):
     """Quick and dirty implementation of convolution with a ROI."""
-    return convolve(signal, kernel, mode='constant')[tuple(slice(a,b) for a,b in roi)]
+    res = convolve(signal, kernel, mode='constant')
+    if roi is None:
+        return res
+    return res[tuple(slice(a,b) for a,b in roi)]
 
 def conv_results2A(conv_results):
     """Convert the N+1 dimensional result of convolution to the N+2 array of A matrices"""
