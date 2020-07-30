@@ -54,7 +54,7 @@ displacement estimates.
 
     for k, (kernelsize1, kernelsize2) in enumerate(zip(kernelsizes1, kernelsizes2)):
         #ensure that matrices A1, b1, A2, b2 are computed only if the kernel size changes
-        if k ==1:
+        if k ==0:
             last_kernelsize1 = -1
         else:
             last_kernelsize1 = kernelsizes1[k - 1]
@@ -80,11 +80,11 @@ displacement estimates.
 
                 r1 = polyexp(im1, cin, 'quadratic', kernelsize1)
                 A1 = conv_results2A(r1)
-                b1 = onv_results2b(r1)
+                b1 = conv_results2b(r1)
 
                 r2 = polyexp(im2, cin, 'quadratic', kernelsize1)
                 A2 = conv_results2A(r2)
-                b2 = onv_results2b(r2)
+                b2 = conv_results2b(r2)
         # update the displacement field
         d0 = d
         sigma = 0.15 * (kernelsize2 - 1)
