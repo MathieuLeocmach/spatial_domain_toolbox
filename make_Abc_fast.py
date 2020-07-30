@@ -14,6 +14,7 @@ from scipy.ndimage import convolve
 
 def conv3(signal, kernel, roi=None):
     """Quick and dirty implementation of convolution with a ROI."""
+    assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
     res = convolve(signal, kernel, mode='constant')
     if roi is None:
         return res
@@ -25,10 +26,10 @@ def conv_results2A(conv_results):
     A = np.zeros(conv_results.shape[:-1]+(N,N))
     #diagonal terms
     for dim in range(N):
-        A[...,dim,dim] = conv_results[...,dim+2]
+        A[...,dim,dim] = conv_results[...,dim+1+N]
     #off-diagonal terms
     for k, (i,j) in enumerate(zip(*np.triu_indices(N,1))):
-        A[...,i,j] = conv_results[...,k+3]/2
+        A[...,i,j] = conv_results[...,k+1*2*N]/2
         A[...,j,i] = A[...,i,j]
     return A
 
@@ -92,6 +93,7 @@ is less than N-dimensional, the singleton dimensions are removed.
     N = signal.ndim
     if N==2 & signal.shape[-1] == 1:
         N=1
+    assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
 
     if spatial_size<1:
         raise ValueError('What use would such a small kernel be?')
@@ -181,8 +183,8 @@ is less than N-dimensional, the singleton dimensions are removed.
 
         #Convolutions in the x-direction.
         kernelx0 = kernely0[None,:]
-        kernelx1 = kernely0[None,:]
-        kernelx2 = kernely0[None,:]
+        kernelx1 = kernely1[None,:]
+        kernelx2 = kernely2[None,:]
         roix = region_of_interest
         roix = roix[:convy_results.ndim]
         #ensures the roi along the x direction starts at 0, since we are working on convy_results that has already been trimmed
@@ -197,6 +199,8 @@ is less than N-dimensional, the singleton dimensions are removed.
         del convy_results
 
         # Apply the inverse metric.
+        # This is just Qinv @ conv_results, but most coefficients of Qinv are zero.
+        # Nonzero coefficients are the diagonal and 1*x**2, and 1*y**2
         tmp = Qinv[0,0] * conv_results[...,0] + Qinv[0,3] * conv_results[...,3] + Qinv[0,4] * conv_results[...,4]
         conv_results[...,1] = Qinv[1,1] * conv_results[...,1]
         conv_results[...,2] = Qinv[2,2] * conv_results[...,2]
