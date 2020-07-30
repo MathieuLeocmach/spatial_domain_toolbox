@@ -26,7 +26,7 @@ sigma: Standard deviation of the Gaussian. Default for a cutoff at 0.005.
 
     if size == 1:
         return np.array(1).reshape((1)*dims)
-    n = int((side-1)//2)
+    n = int((size-1)//2)
 
     if sigma is None:
         delta = 0.005
@@ -40,6 +40,6 @@ sigma: Standard deviation of the Gaussian. Default for a cutoff at 0.005.
 
 
     if sigma != 0:
-        return np.exp(-r2/(2*sigma^2))
+        return np.exp(-r2/(2*sigma**2))
     else:
         return (r2==0).astype(np.float64)
