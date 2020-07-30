@@ -153,7 +153,7 @@ displacement values.
 
 	elif model == 'affine':
 		# define base polynomials (here affine)
-		S = [1,] + [np.arange(s)[(slice(None),)+(np.newaxis,)*(N-1-dim)] for dim, s in enumerate(shape)]
+		S = [1,] + [np.arange(s)[(np.newaxis,)*dim + (slice(None),)+(np.newaxis,)*(N-1-dim)] for dim, s in enumerate(shape)]
 		#S.T * A.T * A * S = S.T * AA * S
 		Q = np.zeros(shape+(N*len(S),N*len(S)))
 		# Q is composed of (N,N) submatrices of shape (len(S),len(S)),
