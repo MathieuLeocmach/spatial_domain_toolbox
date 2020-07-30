@@ -90,6 +90,6 @@ displacement estimates.
         # update the displacement field
         d0 = d
         sigma = 0.15 * (kernelsize2 - 1)
-        A, b = prepare_displacement_matrices(A1, b1, A2, b2, d0)
-        d, c = compute_displacement(A, b, kernelsize2, sigma, cin, model)
+        A, Delta_b = prepare_displacement_matrices(A1, b1, A2, b2, d0)
+        d, c = compute_displacement(A, Delta_b, kernelsize2, sigma, cin, model)
     return d, c
