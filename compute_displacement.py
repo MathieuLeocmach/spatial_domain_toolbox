@@ -46,6 +46,7 @@ app: applicability, supposed separable (1D kernel)
 
 cinaver: certainty local average weighted by applicability. Can be computed if not given.
 """
+	N = coeff.ndim
 	if cinaver is None:
 		cinaver = np.copy(cin)
 		for dim in range(N):
@@ -101,7 +102,7 @@ displacement values.
 	#A.T * A, but A is symmetric
 	AA = A @ A
 	#A.T * Delta_b, but A is symmetric
-	Ab = A @ Delta_b
+	Ab = (A @ Delta_b[...,None])[...,0]
 
 	# # define base polynomials
 	# if model == 'constant':
