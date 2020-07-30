@@ -50,14 +50,14 @@ cinaver: certainty local average weighted by applicability. Can be computed if n
 		cinaver = np.copy(cin)
 		for dim in range(N):
 			#convolution with (separable) applicability in each dimension
-			cinaver = conv3(cinaver, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+			cinaver = conv3(cinaver, app[(np.newaxis,)*dim + (slice(None),)+(np.newaxis,)*(N-1-dim)])
 			#machine epsilon (to avoid division by zero)
 			cinaver += np.finfo(coeff.dtype).eps
 	#normalized convolution of the coefficient to obtain a local average weighted by applicability and certainty
 	coeff *= cin
 	#convolution with (separable) applicability in each dimension
 	for dim in range(N):
-		coeff = conv3(coeff, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+		coeff = conv3(coeff, app[(np.newaxis,)*dim + (slice(None),)+(np.newaxis,)*(N-1-dim)])
 	#normalizing convolution
 	coeff /= cinaver
 	return coeff
@@ -94,7 +94,7 @@ displacement values.
 	#certainty local average weighted by applicability
 	cinaver = np.copy(cin)
 	for dim in range(N):
-		cinaver = conv3(cinaver, app[(slice(None),)+(np.newaxis,)*(N-1-dim)])
+		cinaver = conv3(cinaver, app[(np.newaxis,)*dim + (slice(None),) + (np.newaxis,)*(N-1-dim)])
 	#machine epsilon (to avoid division by zero)
 	eps = np.finfo(A.dtype).eps
 	cinaver += eps
@@ -124,7 +124,8 @@ displacement values.
 
 
 		#normalized convolution of the coefficients to obtain a local average weighted by applicability and certainty
-		Q = conv3(conv3(Q*cin[...,None], app), app.T) / (eps + cinaver[...,None])
+		for i in range(Q.shape[-1]):
+			Q[...,i] = normalized_conv(Q[...,i], cin, app, cinaver)
 
 		# Solve the equation Qv=q. (Eq. 7.23)
 		# where v is the unknown displacement, Q = A.T * A and q = A.T * Delta_b
@@ -145,7 +146,7 @@ displacement values.
 		# Compute output certainty (Eq. 7.24)
 		# as Delta_b.T * Delta_b - d * q
 		q = Delta_b[...,0]**2 + Delta_b[...,1]**2
-		q = conv3(conv3(q*cin, app), app.T) / cinaver
+		q = normalized_conv(q, cin, app, cinaver)
 		cout = q - d*displacement[...,0] - e*displacement[...,1]
 		return displacement, cout
 
