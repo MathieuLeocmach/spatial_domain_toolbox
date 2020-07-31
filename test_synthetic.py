@@ -74,10 +74,25 @@ def test_single_square():
     A, Delta_b = prepare_displacement_matrices(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="fast")
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
 
     d0 = np.zeros_like(displ)
-    d0[...,0] = 1
+    d0[...,1] = 1
     A, Delta_b = prepare_displacement_matrices(A0, b0, A1, b1, d0)
-    assert np.abs(Delta_b[31,32,0]-1) <0.05
-    # displ2, err2 = estimate_displacement(im0, im2, [5], [15], model="constant", method="fast")
-    # assert np.abs(displ2).max() == 1
+
+    #shift by one pixel on axis 1
+    im1 = np.zeros((64,64))
+    im1[30:33, 33:36] = 1
+    A1, b1, c1 = make_Abc_fast(im1, 5)
+    assert np.all(A1[:,1:] == A0[:,:-1])
+    assert np.all(b1[:,1:] == b0[:,:-1])
+    assert np.all(c1[:,1:] == c0[:,:-1])
+    # no initial guess of the displacement
+    A, Delta_b = prepare_displacement_matrices(A0, b0, A1, b1)
+    assert np.all(Delta_b == -0.5*(b1-b0))
+    assert np.all(A == 0.5*(A0+A1))
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="fast")
+    assert int(displ[31,33,0]) == 1
+    assert int(displ[31,33,1]) == 0
