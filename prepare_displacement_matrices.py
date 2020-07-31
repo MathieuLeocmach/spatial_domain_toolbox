@@ -47,8 +47,11 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     Delta_b = np.zeros(b1.shape)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for index in np.ndindex(shape):
+        #displacement is given fast index first, so we revert
+        #we also take the opposite in order to be able to bring next image
+        #on previous image
         #truncate the rounded displacement so that no pixel goes out
-        d = np.floor(0.5 + displacement[index]).astype(np.int64)
+        d = np.floor(0.5 - displacement[index]).astype(np.int64)[::-1]
         for dim in range(N):
             d[dim] = min(max(d[dim], -index[dim]), shape[dim] -index[dim] -1)
         #flatten advected index
