@@ -80,7 +80,9 @@ def test_single_square():
 
     d0 = np.zeros_like(displ)
     d0[...,1] = 1
-    A, Delta_b = prepare_displacement_matrices(A0, b0, A1, b1, d0)
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="fast", d0=d0)
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
 
     #shift by one pixel on axis 1
     im1 = np.zeros((64,64))
