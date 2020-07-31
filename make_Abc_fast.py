@@ -29,7 +29,7 @@ def conv_results2A(conv_results):
         A[...,dim,dim] = conv_results[...,dim+1+N]
     #off-diagonal terms
     for k, (i,j) in enumerate(zip(*np.triu_indices(N,1))):
-        A[...,i,j] = conv_results[...,k+1*2*N]/2
+        A[...,i,j] = conv_results[...,k+1+2*N]/2
         A[...,j,i] = A[...,i,j]
     return A
 
@@ -118,13 +118,16 @@ is less than N-dimensional, the singleton dimensions are removed.
     if certainty is None:
         certainty = np.ones((spatial_size,)*N)
 
+    # MATLAB version creates a (spatial_size, 1) shaped array
     a = np.exp(-(np.arange(-n,n+1)**2/(2*sigma**2)))
 
 
     if N==1:
         # Set up applicability and basis functions.
         applicability = a
+        # MATLAB version creates a (spatial_size, 1) shaped array
         x = np.arange(-n,n+1)
+        # MATLAB version creates a (spatial_size, 3) shaped array
         b = np.array([np.ones(x.shape), x, x**2])
         nb = b.shape[0]
         #Compute the inverse metric.
@@ -137,6 +140,7 @@ is less than N-dimensional, the singleton dimensions are removed.
         Qinv = np.linalg.inv(Q)
 
         #convolution in the x direction
+        # MATLAB version creates three (spatial_size, 1) shaped array
         kernelx0 = a
         kernelx1 = np.arange(-n,n+1) * a
         kernelx2 = np.arange(-n,n+1)**2 * a
@@ -157,6 +161,7 @@ is less than N-dimensional, the singleton dimensions are removed.
     elif N==2:
         #Set up applicability and basis functions.
         applicability = a[None,:] * a[:,None]
+        #fastest varrying index first
         x, y = np.meshgrid(np.arange(-n,n+1), np.arange(-n,n+1))
         b = np.array([np.ones(x.shape), x, y, x**2, y**2, x*y])
         nb = b.shape[0]
@@ -171,6 +176,7 @@ is less than N-dimensional, the singleton dimensions are removed.
         Qinv = np.linalg.inv(Q)
 
         #Convolutions in the y-direction.
+        # MATLAB version creates three (1,spatial_size) shaped array
         kernely0 = a
         kernely1 = np.arange(-n,n+1)*a
         kernely2 = np.arange(-n,n+1)**2 *a
@@ -179,9 +185,10 @@ is less than N-dimensional, the singleton dimensions are removed.
         roiy[:,1] = np.minimum(roiy[:,1], len(signal))
         convy_results = np.zeros(np.diff(roiy, axis=1)[:,0].astype(int).tolist()+[3])
         for i, kern in enumerate([kernely0, kernely1, kernely2]):
+            # Here we ensures convolution along the slowest varrying index, i.e. y
             convy_results[...,i] = conv3(signal, kern[:,None], roiy)
 
-        #Convolutions in the x-direction.
+        #Convolutions in the x-direction (fastest varrying).
         kernelx0 = kernely0[None,:]
         kernelx1 = kernely1[None,:]
         kernelx2 = kernely2[None,:]
