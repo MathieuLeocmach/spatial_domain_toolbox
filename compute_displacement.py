@@ -147,6 +147,7 @@ displacement values.
 		displacement[...,0] = d*b - c*e
 		displacement[...,1] = a*e - c*d
 		displacement /= (a*b - c**2 + eps)[...,None]
+		displacement = -displacement
 
 		# Compute output certainty (Eq. 7.24)
 		# as Delta_b.T * Delta_b - d * q
@@ -192,7 +193,7 @@ displacement values.
 
 
 		# Solve the equation Qp=q.
-		p = lstsq_ND(Q, q)
+		p = -lstsq_ND(Q, q)
 		#convert solution to displacement by projecting on the base functions
 		displacement = np.zeros(shape+(N,))
 		for dim in range(N):
