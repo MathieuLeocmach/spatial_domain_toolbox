@@ -17,11 +17,11 @@ def get_border(shape, width):
     border width"""
     border = np.zeros(shape, bool)
     for dim in range(border.ndim):
-        border[(slice(None),)*dim + (slice(None,width),)] = True
-        border[(slice(None),)*dim + (slice(-width),)] = True
+        border[(slice(None),)*dim + (slice(0,width),)] = True
+        border[(slice(None),)*dim + (slice(-width,None),)] = True
     return border
 
-def estimate_displacement(im1, im2, kernelsizes1, kernelsizes2, model, method, d0=None):
+def estimate_displacement(im1, im2, kernelsizes1, kernelsizes2, model, method, d0=None, gaussian_applicability=True):
     """Estimate displacement according to the algorithms described in chapter 7
 of Gunnar Farnebäck's thesis "Polynomial Expansion for Orientation and Motion
 Estimation".
@@ -91,5 +91,5 @@ displacement estimates.
         d0 = d
         sigma = 0.15 * (kernelsize2 - 1)
         A, Delta_b = prepare_displacement_matrices(A1, b1, A2, b2, d0)
-        d, c = compute_displacement(A, Delta_b, kernelsize2, sigma, cin, model)
+        d, c = compute_displacement(A, Delta_b, kernelsize2, sigma, cin, model, gaussian_applicability)
     return d, c
