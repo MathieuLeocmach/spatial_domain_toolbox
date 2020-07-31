@@ -62,7 +62,7 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
         # advected average of the two A matrices (Eq. 7.32)
         A[index] = (A1[index] + A22[index2]) / 2
         # advected difference of the two vectors b (Eq. 7.33)
-        df = d.astype(A.dtype)
-        bb2 = b22[index2] - 2 * A[index] @ df
+        #df = d.astype(A.dtype)
+        bb2 = b22[index2] - 2 * A[index] @ displacement[index]
         Delta_b[index] = -(bb2 - b1[index]) / 2
     return  A, Delta_b
