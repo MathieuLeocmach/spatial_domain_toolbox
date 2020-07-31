@@ -65,7 +65,7 @@ cinaver: certainty local average weighted by applicability. Can be computed if n
 
 
 
-def compute_displacement(A, Delta_b, kernelsize, sigma, cin, model):
+def compute_displacement(A, Delta_b, kernelsize, sigma, cin, model, gaussian_applicability=True):
 	"""Compute displacement estimates according to equation (7.30) in Gunnar
 Farnebäck's thesis "Polynomial Expansion for Orientation and Motion	Estimation".
 Optionally also compute output certainty according to equation (7.24) extended
@@ -91,7 +91,10 @@ displacement values.
 	shape = A.shape[:-2]
 	N = len(shape)
 	#applicability
-	app = gaussian_app(kernelsize, 1, sigma) #to do
+	if gaussian_applicability:
+		app = gaussian_app(kernelsize, 1, sigma)
+	else:
+		app = np.ones(kernelsize)
 	#certainty local average weighted by applicability
 	cinaver = np.copy(cin)
 	for dim in range(N):
@@ -202,6 +205,8 @@ displacement values.
 
 		return displacement, cout
 
+	else:
+		raise InputError("Model '%s' not implemented"%model)
 
 
 
