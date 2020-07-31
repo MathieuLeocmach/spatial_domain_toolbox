@@ -119,12 +119,13 @@ displacement values.
 		# 2D code exploiting symmetries
 		# bundle together all the useful coefficients of A.T * A
 		Q = np.zeros(shape+(5,))
-		Q[...,0] = A[...,0,0]**2 + A[...,0,1]**2
-		Q[...,1] = A[...,1,1]**2 + A[...,0,1]**2
-		Q[...,2] = A[...,0,0] + A[...,1,1]*A[...,0,1]
+		Q[...,0] = AA[...,0,0]#A[...,0,0]**2 + A[...,0,1]**2
+		Q[...,1] = AA[...,1,1]#A[...,1,1]**2 + A[...,0,1]**2
+		Q[...,2] = AA[...,0,1]#(A[...,0,0] + A[...,1,1])*A[...,0,1]
 		# and A.T * Delta_b
-		Q[...,3] = A[...,0,0]*Delta_b[...,0] + A[...,0,1]*Delta_b[...,1]
-		Q[...,4] = A[...,0,1]*Delta_b[...,0] + A[...,1,1]*Delta_b[...,1]
+		Q[...,3:] = Ab
+		#Q[...,3] = A[...,0,0]*Delta_b[...,0] + A[...,0,1]*Delta_b[...,1]
+		#Q[...,4] = A[...,0,1]*Delta_b[...,0] + A[...,1,1]*Delta_b[...,1]
 
 
 		#normalized convolution of the coefficients to obtain a local average weighted by applicability and certainty
