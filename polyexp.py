@@ -130,148 +130,40 @@ is just linear and in 3D it should rather be called trilinear."""
 
 
 
-% We are going to modify the value returned by nargin, so we copy it to a
-% variable.
-numin = nargin;
+	N = signal.ndim
+	if N==2 & signal.shape[-1] == 1:
+		N=1
+	assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
 
-if numin < 1
-    error('missing parameters')
-end
+	if spatial_size<1:
+		raise ValueError('What use would such a small kernel be?')
+	elif spatial_size%2 != 1:
+		spatial_size = int(2*floor((spatial_size-1)//2) + 1)
+		warnings.warn('Only kernels of odd size are allowed. Changed the size to %d.'% spatial_size)
+	n = int((spatial_size - 1) // 2)
 
-% 1D signals are represented by column vectors. However, ndims() never
-% reports fewer than 2 dimensions, so we need to detect 1D signals
-% explicitly.
-N = ndims(signal);
-if N == 2 & size(signal, 2) == 1
-    N = 1;
-end
+	if sigma is None:
+	    sigma = 0.15 * (spatial_size - 1);
 
-if N > 4
-    error('more than four signal dimensions unsupported')
-end
+	if region_of_interest is None:
+		if N ==1:
+			region_of_interest = np.array([[0, signal.shape[0]]], dtype=int)
+		else:
+			region_of_interest = np.array([[0,]*N, list(signal.shape)], dtype=int).T
 
-% Does the second parameter look like a certainty? If not we set the
-% certainty to the default value [] (constant certainty).
-if numin >= 2
-    if (~isempty(certainty) ...
-	& (ndims(certainty) ~= ndims(signal) ...
-	   | ~all(size(certainty) == size(signal))))
-	% Not a certainty. Shift all remaining parameters one step.
-	if numin >= 5
-	    options = sigma;
-	end
+	if applicability is None:
+		#Gaussian applicability in each dimension. Fastest varrying last (contrary to MATLAB code).
+		a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
+		applicability = [
+			a.reshape((1,)*dim + (spatial_size,) + (1,)*(N-dim-1))
+			for dim in N
+		]
 
-	if numin >= 4
-	    sigma = spatial_size;
-	end
 
-	if numin >= 3
-	    spatial_size = basis;
-	end
 
-	basis = certainty;
-	certainty = [];
-	numin = numin + 1;
-    end
-end
 
-% Is the last parameter a struct? Then assume it is the options parameter.
-% First set options to an empty array if it has not appeared in its own
-% position.
 
-if numin < 6
-    options = [];
-end
 
-if numin == 3 & isstruct(basis)
-    options = basis;
-    numin = numin - 1;
-end
-
-if numin == 4 & isstruct(spatial_size)
-    options = spatial_size;
-    numin = numin - 1;
-end
-
-if (numin == 5 & isstruct(sigma))
-    options = sigma;
-    numin = numin - 1;
-end
-
-% Add default values for other missing parameters than options.
-if numin < 2
-    certainty = [];
-end
-
-if numin < 3
-    basis = 'quadratic';
-end
-
-if numin < 4
-    spatial_size = 9;
-end
-
-if numin < 5
-    sigma = 0.15 * (spatial_size - 1);
-end
-
-% All input parameters have now been identified and assigned default values
-% if they were missing. Check the validity of certain parameters.
-
-if spatial_size < 1
-    error('What use would such a small kernel be?')
-elseif mod(spatial_size, 2)~=1
-    spatial_size = 2*floor((spatial_size-1)/2) + 1;
-    warning(sprintf('Only kernels of odd size are allowed. Changed the size to %d.', spatial_size))
-end
-
-% Construct a region of interest, using the one in options if provided.
-
-if isfield(options, 'region_of_interest')
-    region_of_interest = options.region_of_interest;
-else
-    if N == 1
-	region_of_interest = [1 size(signal, 1)];
-    else
-	region_of_interest = [ones(N, 1), size(signal)'];
-    end
-end
-
-% Construct applicability. If one is given in options we use that one.
-% Otherwise we build a Gaussian with the specified spatial size and standard
-% deviation.
-
-if isfield(options, 'applicability')
-    applicability = options.applicability;
-else
-    n = (spatial_size - 1) / 2;
-    a = exp(-(-n:n).^2/(2*sigma^2))';
-    if N == 1
-	applicability = a;
-    elseif N == 2
-	applicability = {a, a'};
-    elseif N == 3
-	applicability = {a, a', shiftdim(a, -2)};
-    elseif N == 4
-	applicability = {a, a', shiftdim(a, -2), shiftdim(a, -3)};
-    end
-end
-
-% Check that the applicability looks reasonable
-if iscell(applicability)
-    if length(applicability) ~= N
-	error('separable applicability inconsistent with signal')
-    end
-
-    for k = 1:length(applicability)
-	if sum(size(applicability{k}) ~= 1) > 1
-	    error('separable applicability must consist of vectors');
-	end
-	% Make sure the directions are right.
-	a = applicability{k};
-	applicability{k} = shiftdim(a(:), -(k-1));
-    end
-end
 
 % Basis functions. If given as string, convert to matrix form.
 % A special convention is that an empty matrix is interpreted as the default
