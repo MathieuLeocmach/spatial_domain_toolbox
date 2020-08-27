@@ -5,6 +5,8 @@
 
 Converted to Python by Mathieu Leocmach
 """
+import numpy as np
+import itertools
 
 def polyexp(signal, certainty=None, basis='quadratic', spatial_size=9, sigma=None,
 	region_of_interest=None, applicability=None, save_memory=False, verbose=False,
@@ -159,94 +161,28 @@ is just linear and in 3D it should rather be called trilinear."""
 			for dim in N
 		]
 
+	# Basis functions. If given as string, convert to matrix form.
+	if basis == 'constant':
+		basis = np.zeros((N, 1))
+	elif basis == 'linear':
+		basis = np.hstack((np.zeros((N,1)), np.eye(N)))
+	elif basis == 'bilinear':
+		#not the same order as in MATLAB, but dimension agnostic
+		basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
+	elif basis == 'quadratic':
+		#not the same order as in MATLAB, but dimension agnostic
+		basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+		basis = basis[:,basis.sum(0)<3]
+	elif basis == 'cubic':
+		#MATLAB was missing the basis element [1,1,1] in 3D
+		basis = np.vstack(list(itertools.product([0, 1, 2, 3], repeat=N))).T
+		basis = basis[:,basis.sum(0)<4]
+	elif isinstance(basis, str):
+		raise ValueError('unknown basis name')
+	else
+	    assert len(basis) = N, 'basis and signal inconsistent'
 
 
-
-
-
-
-% Basis functions. If given as string, convert to matrix form.
-% A special convention is that an empty matrix is interpreted as the default
-% basis (quadratic).
-if isempty(basis)
-    basis = 'quadratic';
-end
-
-if ischar(basis)
-    switch basis
-     case 'constant'
-      basis = zeros(N, 1);
-     case 'linear'
-      if N == 1
-	  basis = [0 1];
-      elseif N == 2
-	  basis = [0 1 0
-		   0 0 1];
-      elseif N == 3
-	  basis = [0 1 0 0
-		   0 0 1 0
-		   0 0 0 1];
-      elseif N == 4
-	  basis = [0 1 0 0 0
-		   0 0 1 0 0
-		   0 0 0 1 0
-		   0 0 0 0 1];
-      end
-     case 'bilinear'
-      if N == 1
-	  basis = [0 1];
-      elseif N == 2
-	  basis = [0 1 0 1
-		   0 0 1 1];
-      elseif N == 3
-	  basis = [0 1 0 0 1 1 0 1
-		   0 0 1 0 1 0 1 1
-		   0 0 0 1 0 1 1 1];
-      elseif N == 4
-	  basis = [0 1 0 0 0 1 1 1 0 0 0 1 1 1 0 1
-		   0 0 1 0 0 1 0 0 1 1 0 1 1 0 1 1
-		   0 0 0 1 0 0 1 0 1 0 1 1 0 1 1 1
-		   0 0 0 0 1 0 0 1 0 1 1 0 1 1 1 1];
-      end
-     case 'quadratic'
-      if N == 1
-	  basis = [0 1 2];
-      elseif N == 2
-	  basis = [0 1 0 2 0 1
-		   0 0 1 0 2 1];
-      elseif N == 3
-	  basis = [0 1 0 0 2 0 0 1 1 0
-		   0 0 1 0 0 2 0 1 0 1
-		   0 0 0 1 0 0 2 0 1 1];
-      elseif N == 4
-	  basis = [0 1 0 0 0 2 0 0 0 1 1 1 0 0 0
-		   0 0 1 0 0 0 2 0 0 1 0 0 1 1 0
-		   0 0 0 1 0 0 0 2 0 0 1 0 1 0 1
-		   0 0 0 0 1 0 0 0 2 0 0 1 0 1 1];
-      end
-     case 'cubic'
-      if N == 1
-	  basis = [0 1 2 3];
-      elseif N == 2
-	  basis = [0 1 0 2 1 0 3 2 1 0
-		   0 0 1 0 1 2 0 1 2 3];
-      elseif N == 3
-	  basis = [0 1 0 0 2 0 0 1 1 0 3 0 0 2 2 1 0 1 0
-		   0 0 1 0 0 2 0 1 0 1 0 3 0 1 0 2 2 0 1
-		   0 0 0 1 0 0 2 0 1 1 0 0 3 0 1 0 1 2 2];
-  basis = [0 1 0 0 0 2 0 0 0 1 1 1 0 0 0 3 0 0 0 2 2 2 1 0 0 1 0 0 1 0 0
-	   0 0 1 0 0 0 2 0 0 1 0 0 1 1 0 0 3 0 0 1 0 0 2 2 2 0 1 0 0 1 0
-	   0 0 0 1 0 0 0 2 0 0 1 0 1 0 1 0 0 3 0 0 1 0 0 1 0 2 2 2 0 0 1
-	   0 0 0 0 1 0 0 0 2 0 0 1 0 1 1 0 0 0 3 0 0 1 0 0 1 0 0 1 2 2 2];
-      end
-     otherwise
-      error('unknown basis name')
-    end
-else
-    if size(basis, 1) ~= N
-	error('basis and signal inconsistent');
-    end
-end
 
 % Decide method.
 if isempty(certainty)
