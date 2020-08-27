@@ -157,7 +157,7 @@ is just linear and in 3D it should rather be called trilinear."""
 		#Gaussian applicability in each dimension. Fastest varrying last (contrary to MATLAB code).
 		a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
 		applicability = [
-			a.reshape((1,)*dim + (spatial_size,) + (1,)*(N-dim-1))
+			a#.reshape((1,)*dim + (spatial_size,) + (1,)*(N-dim-1))
 			for dim in N
 		]
 
@@ -182,115 +182,64 @@ is just linear and in 3D it should rather be called trilinear."""
 	else
 	    assert len(basis) = N, 'basis and signal inconsistent'
 
+	# Decide method
+	separable_computations = (not save_memory) and isinstance(applicability, list)
+	if certainty is None:
+		if separable_computations:
+			method = 'SC'
+		else:
+			method = 'C'
+	else:
+		if separable_computations:
+			method = 'SNC'
+		else:
+			method = 'NC'
+
+	if save_memory and isinstance(applicability, list):
+		#we are not going to do separable computations
+		#but we have a separable applicability, collapse it to an array.
+		applicability = np.prod([
+			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
+			for dim, a in enumerate(applicability)
+			], axis=0)
+
+	# Set up the monomial coordinates. If we do separable computations, these
+	# are vectors, otherwise full arrays.
+	if isinstance(applicability, list):
+		ashape = map(len, applicability)
+	else:
+		ashape = applicability.shape
+	X = []
+	for dim,k in enumerate(ashape):
+		 n = int((k - 1) // 2)
+		 X.append(np.arange(-n,n+1))
+
+	if separable_computations:
+		X = [x.reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)) for dim,x in enumerate(X)]
+	else:
+		X = np.meshgrid(*X)
 
 
-% Decide method.
-if isempty(certainty)
-    constant_certainty = 1;
-else
-    constant_certainty = 0;
-end
+	# Are we expected to compute output certainty?
+	cout_needed = cout_func is not None
 
-if iscell(applicability)
-    separable_computations = 1;
-else
-    separable_computations = 0;
-end
-
-if isfield(options, 'save_memory') & options.save_memory ~= 0
-    separable_computations = 0;
-end
-
-if constant_certainty & separable_computations
-    method = 'SC';
-elseif constant_certainty & ~separable_computations
-    method = 'C';
-elseif ~constant_certainty & separable_computations
-    method = 'SNC';
-else
-    method = 'NC';
-end
-
-% If we are not going to do separable computations but we have a separable
-% applicability, collapse it to an array.
-if ~separable_computations & iscell(applicability)
-    a = applicability{1};
-    for k = 2:N
-	a = outerprod(a, applicability{k});
-    end
-    applicability = a;
-end
-
-% Set up the monomial coordinates. If we do separable computations, these
-% are vectors, otherwise full arrays.
-for k = 1:N
-    if iscell(applicability)
-	n = (length(applicability{k}) - 1) / 2;
-    else
-	n = (size(applicability, k) - 1) / 2;
-    end
-    X{k} = shiftdim((-n:n)', -(k-1));
-end
-
-if ~separable_computations
-    if N == 2
-	x1 = X{1};
-	x2 = X{2};
-	X{1} = outerprod(x1, ones(size(x2)));
-	X{2} = outerprod(ones(size(x1)), x2);
-    elseif N == 3
-	x1 = X{1};
-	x2 = X{2};
-	x3 = X{3};
-	X{1} = outerprod(outerprod(x1, ones(size(x2))), ones(size(x3)));
-	X{2} = outerprod(outerprod(ones(size(x1)), x2), ones(size(x3)));
-	X{3} = outerprod(outerprod(ones(size(x1)), ones(size(x2))), x3);
-    elseif N == 4
-	x1 = X{1};
-	x2 = X{2};
-	x3 = X{3};
-	x4 = X{4};
-	X{1} = outerprod(outerprod(outerprod(x1, ones(size(x2))), ...
-				   ones(size(x3))), ones(size(x4)));
-	X{2} = outerprod(outerprod(outerprod(ones(size(x1)), x2), ...
-				   ones(size(x3))), ones(size(x4)));
-	X{3} = outerprod(outerprod(outerprod(ones(size(x1)), ...
-					     ones(size(x2))), x3), ...
-			 ones(size(x4)));
-	X{4} = outerprod(outerprod(outerprod(ones(size(x1)), ...
-					     ones(size(x2))), ...
-				   ones(size(x3))), x4);
-    end
-end
-
-% Are we expected to compute output certainty?
-if nargout == 2 & ~isfield(options, 'cout_func')
-    error('Output certainty expected but no function to compute it provided.');
-end
-
-cout_needed = 0;
-if nargout == 2 & isfield(options, 'cout_func')
-    cout_needed = 1;
-end
+	# The caller wants a report about what we are doing.
+	if verbose:
+		print(f"method: {method}")
+		print("basis:")
+		print(basis)
+		print("applicability:")
+		print(applicability)
+		print("region_of_interest:")
+		print(region_of_interest)
+		if certainty is None:
+			print("constant certainty assumed")
+		for dim,x in enumerate(X):
+			print(f"X{dim}")
+			print(x)
 
 
-% The caller wants a report about what we are doing.
-if isfield(options, 'verbose') & options.verbose ~= 0
-    disp(sprintf('method: %s', method));
-    disp('basis:');
-    disp(basis);
-    disp('applicability:');
-    disp(applicability);
-    disp('region_of_interest:');
-    disp(region_of_interest);
-    if isempty(certainty)
-	disp('constant certainty assumed');
-    end
-    for k = 1:N
-	disp(sprintf('X%d:\n', k));
-	disp(X{k});
-    end
-end
+
 
 
 %%%% Now over to the actual computations. %%%%
