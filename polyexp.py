@@ -11,6 +11,84 @@ from scipy import sparse
 
 from make_Abc_fast import conv3
 
+class ConvResults:
+    """Container for (partial) convolution results of a signal by separable
+    basis and applicability"""
+
+    def __init__(self, signal, applicability, region_of_interest):
+        """
+signal: Signal values. Must be real and nonsparse.
+
+applicability: A list containing one 1D vector for each signal dimension.
+
+region_of_interest: An Nx2 matrix where each row contains start and stop indices
+along the corresponding dimensions.
+"""
+        assert signal.ndims == len(applicability)
+        self.signal = signal
+        self.applicability = applicability
+        self.region_of_interest = region_of_interest
+        self._res = {(0,)*signal.ndims:signal)}
+        N = signal.ndims
+        # Set up the monomial coordinates.
+    	self.X = []
+    	for dim,a in enumerate(applicability):
+    		 n = int((len(a) - 1) // 2)
+    		 self.X.append(np.arange(-n,n+1).reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)))
+
+
+    def __getitem__(self, index):
+        """If existing, retrieves the (partial) convolution result
+        corresponding to index, otherwise compute and cache it.
+
+        Example:
+        Index (0,2,1) returns the convolution by y**2 and x
+        Index (2,0,0) returns the convolution by z**3
+        """
+        assert len(index) == signal.ndims
+        if isinstance(index, np.ndarray):
+            index = tuple(index.tolist())
+        if index not in self._res:
+            #first nonzero index, i.e. the slowest varrying dimension
+            k = np.where(np.array(index)>0)[0][0]
+            e = index[k]
+            prior = np.array(index)
+            prior[k] = 0
+            # Retrieve or compute recursively the prior partial result where
+            # only the convolution on the slowest varrying dimension is missing
+            prior = self[prior]
+            # Compute the convolution on the slowest varrying dimension
+            self._res[index] = conv3(
+                prior,
+                self.applicability[k] * self.X[k]**e,
+                self.get_roi(k)
+                )
+        return self._res[index]
+
+    def get_roi(self, k):
+        # Region of interest must be carefully computed to avoid needless
+        # loss of accuracy.
+        roi = self.region_of_interest
+        N = self.signal.ndims
+        for l in range(k-1):
+            roi[l, 0] += np.min(self.X[l])
+            roi[l, 1] += np.max(self.X[l])
+        roi[:,0] = np.maximum(0, roi[:,0])
+        roi[:,1] = np.minimum(self.signal.shape, roi[:,1])
+        # Fetch a computed correlation results on the next slower varrying dimension.
+        #index = np.ones(N, np.int64)
+        #index[:k+1] = 0
+        #prev = self[index]
+        #roi = roi[:prev.ndims]
+        if k < N-1:
+            # We are working on a convolution result that has already been
+            # trimmed. So we have to ensure that the roi along the k
+            # direction starts at 0
+            koffset = roi[k,0] - max(0, roi[k,0] + np.min(self.X[k]))
+            roi -= np.repeat(roi[:,0,None], 2, axis=1)
+            roi[k] += koffset
+        return roi
+
 def polyexp(signal, certainty=None, basis='quadratic', spatial_size=9, sigma=None,
 	region_of_interest=None, applicability=None, save_memory=False, verbose=False,
 	cout_func=None, cout_data=None
@@ -168,7 +246,9 @@ is just linear and in 3D it should rather be called trilinear."""
 	if basis == 'constant':
 		basis = np.zeros((N, 1))
 	elif basis == 'linear':
-		basis = np.hstack((np.zeros((N,1)), np.eye(N)))
+		#not the same order as in MATLAB, but dimension agnostic
+		basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
+		basis = basis[:,basis.sum(0)<2]
 	elif basis == 'bilinear':
 		#not the same order as in MATLAB, but dimension agnostic
 		basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
@@ -281,102 +361,47 @@ is just linear and in 3D it should rather be called trilinear."""
 		cout = cout.reshape(r.shape[:-1])
 		return r, cout
 
+	elif method == 'SC':
+		# Separable Convolution. This implements the generalization of figure
+		# 4.9 to any dimensionality and any choice of polynomial basis.
+		# Things do become fairly intricate.
+
+        # Compute inverse metric
+        full_applicability = np.prod([
+			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
+			for dim, a in enumerate(applicability)
+			], axis=0)
+        B = np.zeros((np.prod(full_applicability.shape), M))
+		for j in range(M):
+			b = np.ones(full_applicability.shape)
+			for k in range(N):
+				b *= X[k]**basis[k,j]
+			B[:,j] = b.ravel()
+        W = sparse.diags(applicability.ravel())
+		G = B.T @ W @ B
+		Ginv = np.linalg.inv(G)
+
+        # Delegate convolution calculations to ConvResults class
+        # Nothing is computed until we ask.
+        convres = ConvResults(signal, applicability, region_of_interest)
+
+        # Ready to multiply with the inverse metric.
+        r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
+        for j in range(M):
+            for i in range(M):
+                index = np.copy(basis(:,i))
+                r[...,j] += Ginv[j,i] * convres[index]
+        if not cout_needed:
+			return r
+		#not optimized, but not used often
+		cout = np.zeros((np.prod(r.shape[:-1]),))
+		for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
+			h = G @ re
+			cout[i] = cout_func(G, G, h, re, cout_data)
+		cout = cout.reshape(r.shape[:-1])
+		return r, cout
 
 
-
-
-
-elseif strcmp(method, 'SC')
-    % Separable Convolution. This implements the generalization of figure
-    % 4.9 to any dimensionality and any choice of polynomial basis.
-    % Things do become fairly intricate.
-    convres = cell(1 + max(basis'));
-    sorted_basis = sortrows(basis(end:-1:1, :)')';
-    sorted_basis = sorted_basis(end:-1:1, end:-1:1);
-    convres{1} = signal;
-
-    % We start with the last dimension because this can be assumed to be
-    % most likely to have a limited region of interest. If that is true this
-    % ordering saves computations. The correct way to do it would be to
-    % process the dimensions in an order determined by the region of
-    % interest, but we avoid that complexity for now. Notice that the
-    % sorting above must be consistent with the ordering used here.
-    for k = N:-1:1
-	% Region of interest must be carefully computed to avoid needless
-	% loss of accuracy.
-	roi = region_of_interest;
-	for l = 1:k-1
-	    roi(l, 1) = roi(l, 1) + min(X{l});
-	    roi(l, 2) = roi(l, 2) + max(X{l});
-	end
-	roi(:, 1) = max(roi(:, 1), ones(N, 1));
-	roi(:, 2) = min(roi(:, 2), size(signal)');
-	% We need the index to one of the computed correlation results
-	% at the previous level.
-	index = sorted_basis(:, 1);
-	index(1:k) = 0;
-	index = num2cell(1 + index);
-	% The max(find(size(...)>1)) stuff is a replacement for ndims(). The
-        % latter gives a useless result for column vectors.
-	roi = roi(1:max(find(size(convres{index{:}}) > 1)), :);
-	if k < N
-	    koffset = roi(k, 1) - max(1, roi(k, 1) + min(X{k}));
-	    roi(:, :) = roi(:, :) + 1 - repmat(roi(:, 1), [1 2]);
-	    roi(k, :) = roi(k, :) + koffset;
-	end
-% 	  roi(k+1:end, :) = (roi(k+1:end, :) + 1 - ...
-% 			     repmat(roi(k+1:end, 1), [1 2]));
-	last_index = sorted_basis(:, 1) - 1;
-	for j = 1:M
-	    index = sorted_basis(:, j);
-	    e = index(k);
-	    index(1:k-1) = 0;
-	    if ~all(index == last_index)
-		last_index = index;
-		index = num2cell(1 + index);
-		prior = index;
-		prior{k} = 1;
-		convres{index{:}} = conv3(convres{prior{:}}, ...
-					  applicability{k} .* X{k}.^e, ...
-					  roi);
-	    end
-	end
-    end
-
-    % The hierarchical correlation structure results have been computed. Now
-    % we need to multiply with the inverse metric. But first we have to
-    % compute it.
-    full_applicability = applicability{1};
-    for k = 2:N
-	full_applicability = outerprod(full_applicability, applicability{k});
-    end
-
-    B = zeros([prod(size(full_applicability)) M]);
-    for j = 1:M
-	b = 1;
-	for k = 1:N
-	    b = outerprod(b, X{k} .^ basis(k, j));
-	end
-	B(:, j) = b(:);
-    end
-    W = diag(sparse(full_applicability(:)));
-    G = B' * W * B;
-    Ginv = inv(G);
-
-    % Ready to multiply with the inverse metric.
-    r = zeros([prod(1+diff(region_of_interest')) M]);
-    for j = 1:M
-	for i = 1:M
-	    index = num2cell(1 + basis(:, i));
-	    tmp = convres{index{:}};
-	    r(:, j) = r(:, j) + Ginv(j, i) * tmp(:);
-	end
-    end
-    r = reshape(r, [1+diff(region_of_interest') M]);
-
-    if cout_needed
-	cout = arrayloop(N, r, 'polyexp_cout_helper', G, options);
-    end
 
 elseif strcmp(method, 'SNC')
     % Separable Normalized Convolution. This implements the generalization
