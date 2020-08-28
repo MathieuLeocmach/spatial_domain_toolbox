@@ -7,6 +7,9 @@ Converted to Python by Mathieu Leocmach
 """
 import numpy as np
 import itertools
+from scipy import sparse
+
+from make_Abc_fast import conv3
 
 def polyexp(signal, certainty=None, basis='quadratic', spatial_size=9, sigma=None,
 	region_of_interest=None, applicability=None, save_memory=False, verbose=False,
@@ -123,9 +126,9 @@ Dimensionality: 1                   2                   3
             0 1 2 3        0 1 0 2 1 0 3 2 1 0
 'cubic'                    0 0 1 0 1 2 0 1 2 3
 
-             		         0 1 0 0 2 0 0 1 1 0 3 0 0 2 2 1 0 1 0
-             		         0 0 1 0 0 2 0 1 0 1 0 3 0 1 0 2 2 0 1
-             		         0 0 0 1 0 0 2 0 1 1 0 0 3 0 1 0 1 2 2
+             		         0 1 0 0 2 0 0 1 1 0 3 0 0 2 2 1 0 1 0 1
+             		         0 0 1 0 0 2 0 1 0 1 0 3 0 1 0 2 2 0 1 1
+             		         0 0 0 1 0 0 2 0 1 1 0 0 3 0 1 0 1 2 2 1
 
 The name 'bilinear' actually only makes sense for the 2D case. In 1D it
 is just linear and in 3D it should rather be called trilinear."""
@@ -239,68 +242,49 @@ is just linear and in 3D it should rather be called trilinear."""
 			print(x)
 
 
+	### Now over to the actual computations. ###
+	M = basis.shape[1]
+	if method[0] != "S":
+		# Not separable. Set up the basis functions.
+		B = np.zeros((np.prod(applicability.shape), M))
+		for j in range(M):
+			b = np.ones(applicability.shape)
+			for k in range(N):
+				b *= X[k]**basis[k,j]
+			B[:,j] = b.ravel()
+	if method == 'NC':
+		# Normalized Convolution.
+		return normconv(
+			signal, certainty, B, applicability, region_of_interest,
+			cout_func=cout_func, cout_data=cout_data
+			)
+
+	elif method == 'C':
+		# Convolution. Compute the metric G and the equivalent correlation
+		# kernels.
+		W = sparse.diags(applicability.ravel())
+		G = B.T @ W @ B
+		B = W @ B @ np.linalg.inv(G)
+
+		# Now do the correlations to get the expansion coefficients.
+		r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
+		for j in range(M):
+			coeff = conv3(signal, B[:,j].reshape(applicability.shape), region_of_interest)
+			r[...,j] = coeff
+		if not cout_needed:
+			return r
+		#not optimized, but not used often
+		cout = np.zeros((np.prod(r.shape[:-1]),))
+		for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
+			h = G @ re
+			cout[i] = cout_func(G, G, h, re, cout_data)
+		cout = cout.reshape(r.shape[:-1])
+		return r, cout
 
 
 
-%%%% Now over to the actual computations. %%%%
 
-M = size(basis, 2);
 
-if strcmp(method, 'NC')
-    % Normalized Convolution. Set up the basis functions as required by the
-    % normconv() function.
-    B = zeros([prod(size(applicability)) M]);
-    for j = 1:M
-	b = ones(size(applicability));
-	for k = 1:N
-	    b = b .* X{k}.^basis(k, j);
-	end
-	B(:, j) = b(:);
-    end
-    appsize = size(applicability);
-    % Remove trailing singleton dimensions from appsize.
-    appsize = appsize(1:max(find(appsize > 1)));
-    B = reshape(B, [appsize M]);
-
-    % Then call normconv.
-    if ~cout_needed
-	r = normconv(signal, certainty, B, applicability, region_of_interest);
-    else
-	normconv_options.cout_func = options.cout_func;
-	if isfield(options, 'cout_data')
-	    normconv_options.cout_data = options.cout_data;
-	end
-	[r cout] = normconv(signal, certainty, B, applicability, ...
-			    region_of_interest, normconv_options);
-    end
-
-elseif strcmp(method, 'C')
-    % Convolution. Compute the metric G and the equivalent correlation
-    % kernels.
-    B = zeros([prod(size(applicability)) M]);
-    for j = 1:M
-	b = ones(size(applicability));
-	for k = 1:N
-	    b = b .* X{k}.^basis(k, j);
-	end
-	B(:, j) = b(:);
-    end
-    W = diag(sparse(applicability(:)));
-    G = B' * W * B;
-    B = W * B * inv(G);
-
-    % Now do the correlations to get the expansion coefficients.
-    r = zeros([prod(1+diff(region_of_interest')) M]);
-    for j = 1:M
-	coeff = conv3(signal, reshape(B(:,j), size(applicability)),...
-		      region_of_interest);
-	r(:, j) = coeff(:);
-    end
-    r = reshape(r, [1+diff(region_of_interest') M]);
-
-    if cout_needed
-	cout = arrayloop(N, r, 'polyexp_cout_helper', G, options);
-    end
 
 elseif strcmp(method, 'SC')
     % Separable Convolution. This implements the generalization of figure
