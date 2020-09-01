@@ -56,7 +56,7 @@ conv3(const double *signal,
       double *result,
       const int *signal_dimensions,
       const int *kernel_dimensions,
-      const int *result_dimensions,
+      const mwSize *result_dimensions,
       const int *start_indices,
       const int *stop_indices)
 {
@@ -194,7 +194,7 @@ conv4(const double *signal,
       double *result,
       const int *signal_dimensions,
       const int *kernel_dimensions,
-      const int *result_dimensions,
+      const mwSize *result_dimensions,
       const int *start_indices,
       const int *stop_indices)
 {
@@ -364,11 +364,11 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
   int i;
   int sn, kn;
-  const int *sdim;
-  const int *kdim;
+  const mwSize *sdim;
+  const mwSize *kdim;
   int signal_dimensions[MAX_DIMENSIONALITY];
   int kernel_dimensions[MAX_DIMENSIONALITY];
-  int result_dimensions[MAX_DIMENSIONALITY];
+  mwSize result_dimensions[MAX_DIMENSIONALITY];
   mxArray *resultarray;
   double *region_of_interest;
   int startindex, stopindex;
@@ -376,7 +376,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   int stop_indices[MAX_DIMENSIONALITY];
   int signal_is_complex = 0;
   void (*conv)(const double *, const double *, double *, const int *,
-	       const int *, const int *, const int *, const int *);
+	       const int *, const mwSize *, const int *, const int *);
   
   /* Check the number of input and output arguments. */
   if (nrhs < 2)
@@ -441,6 +441,13 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     if (mxGetNumberOfDimensions(prhs[2]) != 2
 	|| mxGetM(prhs[2]) != sn || mxGetN(prhs[2]) != 2)
     {
+        printf(
+            "signal has %d dimensions, roi is a %d by %d matrix of %d dimensions", 
+            sn,
+            mxGetM(prhs[2]),
+            mxGetN(prhs[2]),
+            mxGetNumberOfDimensions(prhs[2])
+            );
       mexErrMsgTxt("Region of interest must be an N by 2 matrix, where N is the dimensionality of the signal.");
     }
     region_of_interest = mxGetPr(prhs[2]);

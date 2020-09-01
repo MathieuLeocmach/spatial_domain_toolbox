@@ -12,10 +12,10 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int ndims;
-    const int *dims;
+    const mwSize *dims;
     int height;
     int width;
-    int result_dims[4];
+    mwSize result_dims[4];
     
     double *A1;
     double *b1;
