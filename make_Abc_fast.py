@@ -201,7 +201,7 @@ is less than N-dimensional, the singleton dimensions are removed.
         conv_results[...,1] = conv3(convy_results[...,0], kernelx1, roix) # y0x1
         conv_results[...,3] = conv3(convy_results[...,0], kernelx2, roix) # y0x2
         conv_results[...,2] = conv3(convy_results[...,1], kernelx0, roix) # y1x0
-        conv_results[...,5] = conv3(convy_results[...,1], kernelx1, roix) / 2 # y1x1
+        conv_results[...,5] = conv3(convy_results[...,1], kernelx1, roix) # y1x1
         conv_results[...,4] = conv3(convy_results[...,2], kernelx0, roix) # y2x0
         del convy_results
 
