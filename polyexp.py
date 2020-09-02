@@ -11,6 +11,58 @@ from scipy import sparse
 
 from make_Abc_fast import conv3
 
+def full_app(applicability):
+    """Construct the full N-dimensional applicability kernel from a list of N applicabilities"""
+    N = len(applicability)
+    return np.prod([
+        a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
+        for dim, a in enumerate(applicability)
+        ], axis=0)
+
+def monomials(applicability):
+    """Return the monomial coordinates within the applicability range.
+    If we do separable computations, these are vectors, otherwise full arrays."""
+    N = len(applicability)
+	if isinstance(applicability, list):
+		ashape = map(len, applicability)
+	else:
+		ashape = applicability.shape
+	X = []
+	for dim,k in enumerate(ashape):
+		 n = int((k - 1) // 2)
+		 X.append(np.arange(-n,n+1))
+
+    #it might be OK and faster to use only the first formula. To be tested.
+	if separable_computations:
+		X = [x.reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)) for dim,x in enumerate(X)]
+	else:
+		X = np.meshgrid(*X)
+    return X
+
+def basis_functions(basis, full_applicability):
+    """Basis functions in the applicability range.
+
+basis: A matrix of size NxM, where N is the signal dimensionality and M is the
+number of basis functions.
+
+full_applicability: A N dimensional array containing the applicability.
+
+---
+Returns
+
+B: A PxM matrix where P is the number of elements in full_applicability (product
+of its dimensions)
+    """
+    M = basis.shape[1]
+    X = monomials(full_applicability)
+    B = np.zeros((np.prod(full_applicability.shape), M))
+    for j in range(M):
+        b = np.ones(full_applicability.shape)
+        for k in range(N):
+            b *= X[k]**basis[k,j]
+        B[:,j] = b.ravel()
+    return B
+
 class ConvResults:
     """Container for (partial) convolution results of a signal by separable
     basis and applicability"""
@@ -31,10 +83,7 @@ along the corresponding dimensions.
         self._res = {(0,)*signal.ndims:signal)}
         N = signal.ndims
         # Set up the monomial coordinates.
-    	self.X = []
-    	for dim,a in enumerate(applicability):
-    		 n = int((len(a) - 1) // 2)
-    		 self.X.append(np.arange(-n,n+1).reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)))
+    	self.X = monomials(applicability)
 
 
     def __getitem__(self, index):
@@ -281,26 +330,10 @@ is just linear and in 3D it should rather be called trilinear."""
 	if save_memory and isinstance(applicability, list):
 		#we are not going to do separable computations
 		#but we have a separable applicability, collapse it to an array.
-		applicability = np.prod([
-			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
-			for dim, a in enumerate(applicability)
-			], axis=0)
+		applicability = full_app(applicability)
 
-	# Set up the monomial coordinates. If we do separable computations, these
-	# are vectors, otherwise full arrays.
-	if isinstance(applicability, list):
-		ashape = map(len, applicability)
-	else:
-		ashape = applicability.shape
-	X = []
-	for dim,k in enumerate(ashape):
-		 n = int((k - 1) // 2)
-		 X.append(np.arange(-n,n+1))
-
-	if separable_computations:
-		X = [x.reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)) for dim,x in enumerate(X)]
-	else:
-		X = np.meshgrid(*X)
+	# Set up the monomial coordinates.
+    X = monomials(applicability)
 
 
 	# Are we expected to compute output certainty?
@@ -326,12 +359,7 @@ is just linear and in 3D it should rather be called trilinear."""
 	M = basis.shape[1]
 	if method[0] != "S":
 		# Not separable. Set up the basis functions.
-		B = np.zeros((np.prod(applicability.shape), M))
-		for j in range(M):
-			b = np.ones(applicability.shape)
-			for k in range(N):
-				b *= X[k]**basis[k,j]
-			B[:,j] = b.ravel()
+        B = basis_functions(basis, applicability)
 	if method == 'NC':
 		# Normalized Convolution.
 		return normconv(
@@ -367,17 +395,9 @@ is just linear and in 3D it should rather be called trilinear."""
 		# Things do become fairly intricate.
 
         # Compute inverse metric
-        full_applicability = np.prod([
-			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
-			for dim, a in enumerate(applicability)
-			], axis=0)
-        B = np.zeros((np.prod(full_applicability.shape), M))
-		for j in range(M):
-			b = np.ones(full_applicability.shape)
-			for k in range(N):
-				b *= X[k]**basis[k,j]
-			B[:,j] = b.ravel()
-        W = sparse.diags(applicability.ravel())
+        full_applicability = full_app(applicability)
+        B = basis_functions(basis, full_applicability)
+        W = sparse.diags(full_applicability.ravel())
 		G = B.T @ W @ B
 		Ginv = np.linalg.inv(G)
 
@@ -414,17 +434,9 @@ is just linear and in 3D it should rather be called trilinear."""
         if not cout_needed:
     	    return polyexp_solve_system(basis, convres_f, convres_c, isreal(signal))
 
-        full_applicability = np.prod([
-			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
-			for dim, a in enumerate(applicability)
-			], axis=0)
-        B = np.zeros((np.prod(full_applicability.shape), M))
-		for j in range(M):
-			b = np.ones(full_applicability.shape)
-			for k in range(N):
-				b *= X[k]**basis[k,j]
-			B[:,j] = b.ravel()
-        W = sparse.diags(applicability.ravel())
+        full_applicability = full_app(applicability)
+        B = basis_functions(basis, full_applicability)
+        W = sparse.diags(full_applicability.ravel())
 		G = B.T @ W @ B
 
         return polyexp_solve_system(
