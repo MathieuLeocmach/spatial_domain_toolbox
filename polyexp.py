@@ -332,9 +332,6 @@ is just linear and in 3D it should rather be called trilinear."""
 		#but we have a separable applicability, collapse it to an array.
 		applicability = full_app(applicability)
 
-	# Set up the monomial coordinates.
-    X = monomials(applicability)
-
 
 	# Are we expected to compute output certainty?
 	cout_needed = cout_func is not None
@@ -350,9 +347,6 @@ is just linear and in 3D it should rather be called trilinear."""
 		print(region_of_interest)
 		if certainty is None:
 			print("constant certainty assumed")
-		for dim,x in enumerate(X):
-			print(f"X{dim}")
-			print(x)
 
 
 	### Now over to the actual computations. ###
