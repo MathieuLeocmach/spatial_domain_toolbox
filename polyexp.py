@@ -401,135 +401,35 @@ is just linear and in 3D it should rather be called trilinear."""
 		cout = cout.reshape(r.shape[:-1])
 		return r, cout
 
+    elif method == 'SNC':
+        # Separable Normalized Convolution. This implements the generalization
+        # of figure C.1 to any dimensionality and any choice of polynomial
+        # basis. Things do become even more intricate.
 
+        # Delegate convolution calculations to ConvResults class
+        # Nothing is computed until we ask.
+        convres_f = ConvResults(signal*certainty, applicability, region_of_interest)
+        convres_c = ConvResults(certainty, applicability, region_of_interest)
 
-elseif strcmp(method, 'SNC')
-    % Separable Normalized Convolution. This implements the generalization
-    % of figure C.1 to any dimensionality and any choice of polynomial
-    % basis. Things do become even more intricate.
+        if not cout_needed:
+    	    return polyexp_solve_system(basis, convres_f, convres_c, isreal(signal))
 
-    sorted_basis = sortrows(basis(end:-1:1, :)')';
-    sorted_basis = sorted_basis(end:-1:1, end:-1:1);
-    convres_f = cell(1 + max(basis'));
-    convres_f{1} = signal .* certainty;
+        full_applicability = np.prod([
+			a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
+			for dim, a in enumerate(applicability)
+			], axis=0)
+        B = np.zeros((np.prod(full_applicability.shape), M))
+		for j in range(M):
+			b = np.ones(full_applicability.shape)
+			for k in range(N):
+				b *= X[k]**basis[k,j]
+			B[:,j] = b.ravel()
+        W = sparse.diags(applicability.ravel())
+		G = B.T @ W @ B
 
-    % basis_c is the set of unique pairwise products of the basis functions.
-    basis_c = repmat(basis, [1 1 M]) + repmat(permute(basis, [1 3 2]), [1 M]);
-    basis_c = reshape(basis_c, [N M^2]);
-    basis_c = unique(basis_c(end:-1:1, :)', 'rows')';
-    basis_c = basis_c(end:-1:1, end:-1:1);
-    convres_c = cell(1 + max(basis_c'));
-    convres_c{1} = certainty;
-
-    % We start with the last dimension because this can be assumed to be
-    % most likely to have a limited region of interest. If that is true this
-    % ordering saves computations. The correct way to do it would be to
-    % process the dimensions in an order determined by the region of
-    % interest, but we avoid that complexity for now. Notice that the
-    % sorting above must be consistent with the ordering used here.
-    for k = N:-1:1
-	% Region of interest must be carefully computed to avoid needless
-	% loss of accuracy.
-	roi = region_of_interest;
-	for l = 1:k-1
-	    roi(l, 1) = roi(l, 1) + min(X{l});
-	    roi(l, 2) = roi(l, 2) + max(X{l});
-	end
-	roi(:, 1) = max(roi(:, 1), ones(N, 1));
-	roi(:, 2) = min(roi(:, 2), size(signal)');
-	% We need the index to one of the computed correlation results
-	% at the previous level.
-	index = sorted_basis(:, 1);
-	index(1:k) = 0;
-	index = num2cell(1 + index);
-	% The max(find(size(...)>1)) stuff is a replacement for ndims(). The
-        % latter gives a useless result for column vectors.
-	roi = roi(1:max(find(size(convres_f{index{:}}) > 1)), :);
-	if k < N
-	    koffset = roi(k, 1) - max(1, roi(k, 1) + min(X{k}));
-	    roi(:, :) = roi(:, :) + 1 - repmat(roi(:, 1), [1 2]);
-	    roi(k, :) = roi(k, :) + koffset;
-	end
-
-	% Correlations for c*f at this level of the structure.
-	last_index = sorted_basis(:, 1) - 1;
-	for j = 1:M
-	    index = sorted_basis(:, j);
-	    e = index(k);
-	    index(1:k-1) = 0;
-	    if ~all(index == last_index)
-		last_index = index;
-		index = num2cell(1 + index);
-		prior = index;
-		prior{k} = 1;
-		convres_f{index{:}} = conv3(convres_f{prior{:}}, ...
-					    applicability{k} .* X{k}.^e, ...
-					    roi);
-	    end
-	end
-
-	% Correlations for c at this level of the structure.
-	last_index = basis_c(:, 1) - 1;
-	for j = 1:size(basis_c, 2)
-	    index = basis_c(:, j);
-	    e = index(k);
-	    index(1:k-1) = 0;
-	    if ~all(index == last_index)
-		last_index = index;
-		index = num2cell(1 + index);
-		prior = index;
-		prior{k} = 1;
-		convres_c{index{:}} = conv3(convres_c{prior{:}}, ...
-					    applicability{k} .* X{k}.^e, ...
-					    roi);
-	    end
-	end
-    end
-
-    % The hierarchical correlation structure results have been computed. Now
-    % we need to solve one equation system at each point to obtain the
-    % expansion coefficients. This is for performance reasons unreasonable
-    % to implement in matlab code (except when there are very few basis
-    % functions), so we resort to solving this with a mex file.
-    if ~cout_needed
-	r = polyexp_solve_system(basis, convres_f, convres_c, isreal(signal));
-    else
-	full_applicability = applicability{1};
-	for k = 2:N
-	    full_applicability = outerprod(full_applicability, applicability{k});
-	end
-
-	% We need to compute G0.
-	B = zeros([prod(size(full_applicability)) M]);
-	for j = 1:M
-	    b = 1;
-	    for k = 1:N
-		b = outerprod(b, X{k} .^ basis(k, j));
-	    end
-	    B(:, j) = b(:);
-	end
-	W = diag(sparse(full_applicability(:)));
-	G0 = B' * W * B;
-
-	if ~isfield(options, 'cout_data')
-	    [r, cout] = polyexp_solve_system(basis, convres_f, convres_c, ...
-					     isreal(signal), ...
-					     options.cout_func, G0);
-	else
-	    [r, cout] = polyexp_solve_system(basis, convres_f, convres_c, ...
-					     isreal(signal), ...
-					     options.cout_func, G0, ...
-					     options.cout_data);
-	end
-    end
-end
-
-return
-
-%%%% Helper functions. %%%%
-
-% Compute outer product of two arrays. This only works correctly if they
-% have mutually exclusive non-singleton dimensions.
-function z = outerprod(x, y)
-z = repmat(x, size(y)) .* repmat(y, size(x));
-return
+        return polyexp_solve_system(
+            basis, convres_f, convres_c, isreal(signal),
+            cout_func=cout_func, G0=G, cout_data=cout_data
+            )
+    else:
+        raise ValueError("Unknown method %s"%method)
