@@ -9,6 +9,7 @@ Converted to Python by Mathieu Leocmach
 import numpy as np
 
 from make_Abc_fast import conv_results2A, conv_results2b, conv_results2c, make_Abc_fast
+from polyexp import polyexp
 from prepare_displacement_matrices import prepare_displacement_matrices
 from compute_displacement import compute_displacement
 
