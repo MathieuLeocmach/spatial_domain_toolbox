@@ -24,20 +24,20 @@ def monomials(applicability):
     """Return the monomial coordinates within the applicability range.
     If we do separable computations, these are vectors, otherwise full arrays."""
     N = len(applicability)
-	if isinstance(applicability, list):
-		ashape = map(len, applicability)
-	else:
-		ashape = applicability.shape
-	X = []
-	for dim,k in enumerate(ashape):
-		 n = int((k - 1) // 2)
-		 X.append(np.arange(-n,n+1))
+    if isinstance(applicability, list):
+        ashape = map(len, applicability)
+    else:
+        ashape = applicability.shape
+    X = []
+    for dim,k in enumerate(ashape):
+         n = int((k - 1) // 2)
+         X.append(np.arange(-n,n+1).reshape((1,)*dim + (k,) + (1,)*(N-dim-1)))
 
     #it might be OK and faster to use only the first formula. To be tested.
-	if separable_computations:
-		X = [x.reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)) for dim,x in enumerate(X)]
-	else:
-		X = np.meshgrid(*X)
+    # if separable_computations:
+    #     X = [x.reshape((1,)*dim + (len(x),) + (1,)*(N-dim-1)) for dim,x in enumerate(X)]
+    # else:
+    #     X = np.meshgrid(*X)
     return X
 
 def basis_functions(basis, full_applicability):
@@ -78,14 +78,14 @@ applicability: A list containing one 1D vector for each signal dimension.
 region_of_interest: An Nx2 matrix where each row contains start and stop indices
 along the corresponding dimensions.
 """
-        assert signal.ndims == len(applicability)
+        assert signal.ndim == len(applicability)
         #self.signal = signal
         self.applicability = applicability
         self.region_of_interest = region_of_interest
-        self._res = {(0,)*signal.ndims:signal)}
+        self._res = {(0,)*signal.ndim:signal}
         self.shape = signal.shape
         # Set up the monomial coordinates.
-    	self.X = monomials(applicability)
+        self.X = monomials(applicability)
 
 
     def __getitem__(self, index):
@@ -141,10 +141,10 @@ along the corresponding dimensions.
         return roi
 
 def polyexp(signal, certainty=None, basis='quadratic', spatial_size=9, sigma=None,
-	region_of_interest=None, applicability=None, save_memory=False, verbose=False,
-	cout_func=None, cout_data=None
-	):
-	"""Compute polynomial expansion in up to four dimensions. The expansion
+    region_of_interest=None, applicability=None, save_memory=False, verbose=False,
+    cout_func=None, cout_data=None
+    ):
+    """Compute polynomial expansion in up to four dimensions. The expansion
 coefficients are computed according to an algorithm described in chapter 4 of
 "Polynomial Expansion for Orientation and Motion Estimation" by Gunnar Farnebäck.
 
@@ -238,13 +238,13 @@ Dimensionality: 1                   2                   3
 
                 0                   0                   0
 'constant'                          0                   0
-														0
+                                                        0
 
               0 1                 0 1 0               0 1 0 0
 'linear'                          0 0 1               0 0 1 0
                                                       0 0 0 1
 
-			  0 1                0 1 0 1          0 1 0 0 1 1 0 1
+              0 1                0 1 0 1          0 1 0 0 1 1 0 1
 'bilinear'                       0 0 1 1          0 0 1 0 1 0 1 1
                                                   0 0 0 1 0 1 1 1
 
@@ -255,147 +255,147 @@ Dimensionality: 1                   2                   3
             0 1 2 3        0 1 0 2 1 0 3 2 1 0
 'cubic'                    0 0 1 0 1 2 0 1 2 3
 
-             		         0 1 0 0 2 0 0 1 1 0 3 0 0 2 2 1 0 1 0 1
-             		         0 0 1 0 0 2 0 1 0 1 0 3 0 1 0 2 2 0 1 1
-             		         0 0 0 1 0 0 2 0 1 1 0 0 3 0 1 0 1 2 2 1
+                              0 1 0 0 2 0 0 1 1 0 3 0 0 2 2 1 0 1 0 1
+                              0 0 1 0 0 2 0 1 0 1 0 3 0 1 0 2 2 0 1 1
+                              0 0 0 1 0 0 2 0 1 1 0 0 3 0 1 0 1 2 2 1
 
 The name 'bilinear' actually only makes sense for the 2D case. In 1D it
 is just linear and in 3D it should rather be called trilinear."""
 
 
 
-	N = signal.ndim
-	if N==2 & signal.shape[-1] == 1:
-		N=1
-	assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
+    N = signal.ndim
+    if N==2 & signal.shape[-1] == 1:
+        N=1
+    assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
 
-	if spatial_size<1:
-		raise ValueError('What use would such a small kernel be?')
-	elif spatial_size%2 != 1:
-		spatial_size = int(2*floor((spatial_size-1)//2) + 1)
-		warnings.warn('Only kernels of odd size are allowed. Changed the size to %d.'% spatial_size)
-	n = int((spatial_size - 1) // 2)
+    if spatial_size<1:
+        raise ValueError('What use would such a small kernel be?')
+    elif spatial_size%2 != 1:
+        spatial_size = int(2*floor((spatial_size-1)//2) + 1)
+        warnings.warn('Only kernels of odd size are allowed. Changed the size to %d.'% spatial_size)
+    n = int((spatial_size - 1) // 2)
 
-	if sigma is None:
-	    sigma = 0.15 * (spatial_size - 1);
+    if sigma is None:
+        sigma = 0.15 * (spatial_size - 1);
 
-	if region_of_interest is None:
-		if N ==1:
-			region_of_interest = np.array([[0, signal.shape[0]]], dtype=int)
-		else:
-			region_of_interest = np.array([[0,]*N, list(signal.shape)], dtype=int).T
+    if region_of_interest is None:
+        if N ==1:
+            region_of_interest = np.array([[0, signal.shape[0]]], dtype=int)
+        else:
+            region_of_interest = np.array([[0,]*N, list(signal.shape)], dtype=int).T
 
-	if applicability is None:
-		#Gaussian applicability in each dimension. Fastest varrying last (contrary to MATLAB code).
-		a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
-		applicability = [
-			a#.reshape((1,)*dim + (spatial_size,) + (1,)*(N-dim-1))
-			for dim in N
-		]
+    if applicability is None:
+        #Gaussian applicability in each dimension. Fastest varrying last (contrary to MATLAB code).
+        a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
+        applicability = [
+            a#.reshape((1,)*dim + (spatial_size,) + (1,)*(N-dim-1))
+            for dim in range(N)
+        ]
 
-	# Basis functions. If given as string, convert to matrix form.
-	if basis == 'constant':
-		basis = np.zeros((N, 1))
-	elif basis == 'linear':
-		#not the same order as in MATLAB, but dimension agnostic
-		basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
-		basis = basis[:,basis.sum(0)<2]
-	elif basis == 'bilinear':
-		#not the same order as in MATLAB, but dimension agnostic
-		basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
-	elif basis == 'quadratic':
-		#not the same order as in MATLAB, but dimension agnostic
-		basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
-		basis = basis[:,basis.sum(0)<3]
-	elif basis == 'cubic':
-		#MATLAB was missing the basis element [1,1,1] in 3D
-		basis = np.vstack(list(itertools.product([0, 1, 2, 3], repeat=N))).T
-		basis = basis[:,basis.sum(0)<4]
-	elif isinstance(basis, str):
-		raise ValueError('unknown basis name')
-	else
-	    assert len(basis) = N, 'basis and signal inconsistent'
+    # Basis functions. If given as string, convert to matrix form.
+    if basis == 'constant':
+        basis = np.zeros((N, 1))
+    elif basis == 'linear':
+        #not the same order as in MATLAB, but dimension agnostic
+        basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
+        basis = basis[:,basis.sum(0)<2]
+    elif basis == 'bilinear':
+        #not the same order as in MATLAB, but dimension agnostic
+        basis = np.vstack(list(itertools.product([0, 1], repeat=N))).T
+    elif basis == 'quadratic':
+        #not the same order as in MATLAB, but dimension agnostic
+        basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+        basis = basis[:,basis.sum(0)<3]
+    elif basis == 'cubic':
+        #MATLAB was missing the basis element [1,1,1] in 3D
+        basis = np.vstack(list(itertools.product([0, 1, 2, 3], repeat=N))).T
+        basis = basis[:,basis.sum(0)<4]
+    elif isinstance(basis, str):
+        raise ValueError('unknown basis name')
+    else:
+        assert len(basis) == N, 'basis and signal inconsistent'
 
-	# Decide method
-	separable_computations = (not save_memory) and isinstance(applicability, list)
-	if certainty is None:
-		if separable_computations:
-			method = 'SC'
-		else:
-			method = 'C'
-	else:
-		if separable_computations:
-			method = 'SNC'
-		else:
-			method = 'NC'
+    # Decide method
+    separable_computations = (not save_memory) and isinstance(applicability, list)
+    if certainty is None:
+        if separable_computations:
+            method = 'SC'
+        else:
+            method = 'C'
+    else:
+        if separable_computations:
+            method = 'SNC'
+        else:
+            method = 'NC'
 
-	if save_memory and isinstance(applicability, list):
-		#we are not going to do separable computations
-		#but we have a separable applicability, collapse it to an array.
-		applicability = full_app(applicability)
-
-
-	# Are we expected to compute output certainty?
-	cout_needed = cout_func is not None
-
-	# The caller wants a report about what we are doing.
-	if verbose:
-		print(f"method: {method}")
-		print("basis:")
-		print(basis)
-		print("applicability:")
-		print(applicability)
-		print("region_of_interest:")
-		print(region_of_interest)
-		if certainty is None:
-			print("constant certainty assumed")
+    if save_memory and isinstance(applicability, list):
+        #we are not going to do separable computations
+        #but we have a separable applicability, collapse it to an array.
+        applicability = full_app(applicability)
 
 
-	### Now over to the actual computations. ###
-	M = basis.shape[1]
-	if method[0] != "S":
-		# Not separable. Set up the basis functions.
+    # Are we expected to compute output certainty?
+    cout_needed = cout_func is not None
+
+    # The caller wants a report about what we are doing.
+    if verbose:
+        print(f"method: {method}")
+        print("basis:")
+        print(basis)
+        print("applicability:")
+        print(applicability)
+        print("region_of_interest:")
+        print(region_of_interest)
+        if certainty is None:
+            print("constant certainty assumed")
+
+
+    ### Now over to the actual computations. ###
+    M = basis.shape[1]
+    if method[0] != "S":
+        # Not separable. Set up the basis functions.
         B = basis_functions(basis, applicability)
-	if method == 'NC':
-		# Normalized Convolution.
-		return normconv(
-			signal, certainty, B, applicability, region_of_interest,
-			cout_func=cout_func, cout_data=cout_data
-			)
+    if method == 'NC':
+        # Normalized Convolution.
+        return normconv(
+            signal, certainty, B, applicability, region_of_interest,
+            cout_func=cout_func, cout_data=cout_data
+            )
 
-	elif method == 'C':
-		# Convolution. Compute the metric G and the equivalent correlation
-		# kernels.
-		W = sparse.diags(applicability.ravel())
-		G = B.T @ W @ B
-		B = W @ B @ np.linalg.inv(G)
+    elif method == 'C':
+        # Convolution. Compute the metric G and the equivalent correlation
+        # kernels.
+        W = sparse.diags(applicability.ravel())
+        G = B.T @ W @ B
+        B = W @ B @ np.linalg.inv(G)
 
-		# Now do the correlations to get the expansion coefficients.
-		r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
-		for j in range(M):
-			coeff = conv3(signal, B[:,j].reshape(applicability.shape), region_of_interest)
-			r[...,j] = coeff
-		if not cout_needed:
-			return r
-		#not optimized, but not used often
-		cout = np.zeros((np.prod(r.shape[:-1]),))
-		for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
-			h = G @ re
-			cout[i] = cout_func(G, G, h, re, cout_data)
-		cout = cout.reshape(r.shape[:-1])
-		return r, cout
+        # Now do the correlations to get the expansion coefficients.
+        r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
+        for j in range(M):
+            coeff = conv3(signal, B[:,j].reshape(applicability.shape), region_of_interest)
+            r[...,j] = coeff
+        if not cout_needed:
+            return r
+        #not optimized, but not used often
+        cout = np.zeros((np.prod(r.shape[:-1]),))
+        for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
+            h = G @ re
+            cout[i] = cout_func(G, G, h, re, cout_data)
+        cout = cout.reshape(r.shape[:-1])
+        return r, cout
 
-	elif method == 'SC':
-		# Separable Convolution. This implements the generalization of figure
-		# 4.9 to any dimensionality and any choice of polynomial basis.
-		# Things do become fairly intricate.
+    elif method == 'SC':
+        # Separable Convolution. This implements the generalization of figure
+        # 4.9 to any dimensionality and any choice of polynomial basis.
+        # Things do become fairly intricate.
 
         # Compute inverse metric
         full_applicability = full_app(applicability)
         B = basis_functions(basis, full_applicability)
         W = sparse.diags(full_applicability.ravel())
-		G = B.T @ W @ B
-		Ginv = np.linalg.inv(G)
+        G = B.T @ W @ B
+        Ginv = np.linalg.inv(G)
 
         # Delegate convolution calculations to ConvResults class
         # Nothing is computed until we ask.
@@ -405,17 +405,17 @@ is just linear and in 3D it should rather be called trilinear."""
         r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
         for j in range(M):
             for i in range(M):
-                index = np.copy(basis(:,i))
+                index = np.copy(basis[:,i])
                 r[...,j] += Ginv[j,i] * convres[index]
         if not cout_needed:
-			return r
-		#not optimized, but not used often
-		cout = np.zeros((np.prod(r.shape[:-1]),))
-		for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
-			h = G @ re
-			cout[i] = cout_func(G, G, h, re, cout_data)
-		cout = cout.reshape(r.shape[:-1])
-		return r, cout
+            return r
+        #not optimized, but not used often
+        cout = np.zeros((np.prod(r.shape[:-1]),))
+        for i, re in enumerate(r.reshape((np.prod(r.shape[:-1]), M))):
+            h = G @ re
+            cout[i] = cout_func(G, G, h, re, cout_data)
+        cout = cout.reshape(r.shape[:-1])
+        return r, cout
 
     elif method == 'SNC':
         # Separable Normalized Convolution. This implements the generalization
@@ -440,17 +440,17 @@ is just linear and in 3D it should rather be called trilinear."""
         r = lstsq_ND(G,h)
 
         if not cout_needed:
-    	    return r
+            return r
 
         full_applicability = full_app(applicability)
         B = basis_functions(basis, full_applicability)
         W = sparse.diags(full_applicability.ravel())
-		G0 = B.T @ W @ B
+        G0 = B.T @ W @ B
 
         #not optimized, but not used often
-		cout = np.zeros(r.shape[:-1])
+        cout = np.zeros(r.shape[:-1])
         for index in np.ndindex(cout.shape):
             cout[index] = cout_func(G[index], G0, h[index], r[index], cout_data)
-		return r, cout
+        return r, cout
     else:
         raise ValueError("Unknown method %s"%method)
