@@ -23,11 +23,11 @@ def full_app(applicability):
 def monomials(applicability):
     """Return the monomial coordinates within the applicability range.
     If we do separable computations, these are vectors, otherwise full arrays."""
-    N = len(applicability)
     if isinstance(applicability, list):
-        ashape = map(len, applicability)
+        ashape = tuple(map(len, applicability))
     else:
         ashape = applicability.shape
+    N = len(ashape)
     X = []
     for dim,k in enumerate(ashape):
          n = int((k - 1) // 2)
@@ -54,7 +54,7 @@ Returns
 B: A PxM matrix where P is the number of elements in full_applicability (product
 of its dimensions)
     """
-    M = basis.shape[1]
+    N,M = basis.shape
     X = monomials(full_applicability)
     B = np.zeros((np.prod(full_applicability.shape), M))
     for j in range(M):
