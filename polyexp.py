@@ -10,6 +10,7 @@ import itertools
 from scipy import sparse
 
 from make_Abc_fast import conv3
+from compute_displacement import lstsq_ND
 
 def full_app(applicability):
     """Construct the full N-dimensional applicability kernel from a list of N applicabilities"""
@@ -63,6 +64,7 @@ of its dimensions)
         B[:,j] = b.ravel()
     return B
 
+
 class ConvResults:
     """Container for (partial) convolution results of a signal by separable
     basis and applicability"""
@@ -77,11 +79,11 @@ region_of_interest: An Nx2 matrix where each row contains start and stop indices
 along the corresponding dimensions.
 """
         assert signal.ndims == len(applicability)
-        self.signal = signal
+        #self.signal = signal
         self.applicability = applicability
         self.region_of_interest = region_of_interest
         self._res = {(0,)*signal.ndims:signal)}
-        N = signal.ndims
+        self.shape = signal.shape
         # Set up the monomial coordinates.
     	self.X = monomials(applicability)
 
@@ -94,7 +96,7 @@ along the corresponding dimensions.
         Index (0,2,1) returns the convolution by y**2 and x
         Index (2,0,0) returns the convolution by z**3
         """
-        assert len(index) == signal.ndims
+        assert len(index) == len(self.shape)
         if isinstance(index, np.ndarray):
             index = tuple(index.tolist())
         if index not in self._res:
@@ -118,12 +120,12 @@ along the corresponding dimensions.
         # Region of interest must be carefully computed to avoid needless
         # loss of accuracy.
         roi = self.region_of_interest
-        N = self.signal.ndims
+        N = len(self.shape)
         for l in range(k-1):
             roi[l, 0] += np.min(self.X[l])
             roi[l, 1] += np.max(self.X[l])
         roi[:,0] = np.maximum(0, roi[:,0])
-        roi[:,1] = np.minimum(self.signal.shape, roi[:,1])
+        roi[:,1] = np.minimum(self.shape, roi[:,1])
         # Fetch a computed correlation results on the next slower varrying dimension.
         #index = np.ones(N, np.int64)
         #index[:k+1] = 0
@@ -425,17 +427,30 @@ is just linear and in 3D it should rather be called trilinear."""
         convres_f = ConvResults(signal*certainty, applicability, region_of_interest)
         convres_c = ConvResults(certainty, applicability, region_of_interest)
 
+        #Compute and store convolution results in one MxM matrix and one
+        # M vector per pixel
+        h = np.zeros(convres_f.shape+(M,))
+        G = np.zeros(convres_f.shape+(M,M))
+        for i in range(M):
+            h[...,i] = convres_f[basis[:,i]]
+            for j in range(M):
+                G[...,i,j] = convres_c[basis[:,i]+basis[:,j]]
+        # Normalize the convolution
+        # Pixelwise least square solution to G @ r = h
+        r = lstsq_ND(G,h)
+
         if not cout_needed:
-    	    return polyexp_solve_system(basis, convres_f, convres_c, isreal(signal))
+    	    return r
 
         full_applicability = full_app(applicability)
         B = basis_functions(basis, full_applicability)
         W = sparse.diags(full_applicability.ravel())
-		G = B.T @ W @ B
+		G0 = B.T @ W @ B
 
-        return polyexp_solve_system(
-            basis, convres_f, convres_c, isreal(signal),
-            cout_func=cout_func, G0=G, cout_data=cout_data
-            )
+        #not optimized, but not used often
+		cout = np.zeros(r.shape[:-1])
+        for index in np.ndindex(cout.shape):
+            cout[index] = cout_func(G[index], G0, h[index], r[index], cout_data)
+		return r, cout
     else:
         raise ValueError("Unknown method %s"%method)
