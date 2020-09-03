@@ -82,12 +82,15 @@ displacement estimates.
                 cin[border] *= 0.1
 
                 r1 = polyexp(im1, cin, 'quadratic', kernelsize1)
-                A1 = conv_results2A(r1)
-                b1 = conv_results2b(r1)
+                #next two line are 2D only. Need to be generalized
+                b1 = np.ascontiguousarray(r1[...,[1,3]])
+                A1 = np.ascontiguousarray(r1[...,[2,4,4,5]].reshape(r1.shape[:-1]+(2,2)))
 
                 r2 = polyexp(im2, cin, 'quadratic', kernelsize1)
-                A2 = conv_results2A(r2)
-                b2 = conv_results2b(r2)
+                #next two line are 2D only. Need to be generalized
+                b2 = np.ascontiguousarray(r2[...,[1,3]])
+                A2 = np.ascontiguousarray(r2[...,[2,4,4,5]].reshape(r2.shape[:-1]+(2,2)))
+
         # update the displacement field
         d0 = d
         sigma = 0.15 * (kernelsize2 - 1)
