@@ -7,6 +7,7 @@ Converted to Python by Mathieu Leocmach
 """
 
 import numpy as np
+import itertools
 
 from make_Abc_fast import conv_results2A, conv_results2b, conv_results2c, make_Abc_fast
 from polyexp import polyexp
@@ -82,14 +83,12 @@ displacement estimates.
                 cin[border] *= 0.1
 
                 r1 = polyexp(im1, cin, 'quadratic', kernelsize1)
-                #next two line are 2D only. Need to be generalized
-                b1 = np.ascontiguousarray(r1[...,[1,3]])
-                A1 = np.ascontiguousarray(r1[...,[2,4,4,5]].reshape(r1.shape[:-1]+(2,2)))
+                # Rearrange coefficients: order 1 in b, order 2 in A, with
+                # off-diagonal terms divided by 2
+                A1, b1 = quadratic_to_Abc(r1)[:2]
 
                 r2 = polyexp(im2, cin, 'quadratic', kernelsize1)
-                #next two line are 2D only. Need to be generalized
-                b2 = np.ascontiguousarray(r2[...,[1,3]])
-                A2 = np.ascontiguousarray(r2[...,[2,4,4,5]].reshape(r2.shape[:-1]+(2,2)))
+                A2, b2 = quadratic_to_Abc(r2)[:2]
 
         # update the displacement field
         d0 = d
@@ -97,3 +96,18 @@ displacement estimates.
         A, Delta_b = prepare_displacement_matrices(A1, b1, A2, b2, d0)
         d, c = compute_displacement(A, Delta_b, kernelsize2, sigma, cin, model, gaussian_applicability)
     return d, c
+
+def quadratic_to_Abc(r):
+    """Convert projection coefficients to a quadratic basis into A matrix,
+    b vector and c scalar (pixel wise)"""
+    N = r.ndim-1
+    # generate a quadratic basis as inside function polyexp
+    basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+    basis = basis[:,basis.sum(0)<3]
+    c = np.ascontiguousarray(r[...,0])
+    b = np.ascontiguousarray(r[...,basis.sum(0)==1][...,::-1])
+    A = np.zeros(r.shape[:-1]+(N,N))
+    for i,j, v in zip(*np.triu_indices(N), np.moveaxis(r[...,basis.sum(0)==2][...,::-1], -1, 0)):
+        A[...,i,j] = v
+    A = 0.5*(A + np.swapaxes(A, -2,-1))
+    return A, b, c
