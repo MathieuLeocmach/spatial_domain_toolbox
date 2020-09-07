@@ -22,7 +22,8 @@ def full_app(applicability):
 
 def monomials(applicability):
     """Return the monomial coordinates within the applicability range.
-    If we do separable computations, these are vectors, otherwise full arrays."""
+    If we do separable computations, these are vectors, otherwise full arrays.
+    Fastest varrying coordinate last"""
     if isinstance(applicability, list):
         ashape = tuple(map(len, applicability))
     else:
@@ -111,7 +112,7 @@ along the corresponding dimensions.
             # Compute the convolution on the slowest varrying dimension
             self._res[index] = conv3(
                 prior,
-                self.applicability[k] * self.X[k]**e,
+                self.applicability[k].reshape(self.X[k].shape) * self.X[k]**e,
                 self.get_roi(k)
                 )
         return self._res[index]
