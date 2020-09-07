@@ -19,19 +19,19 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int i, j, k;
     int N, M;
-    const int *basisdims;
+    const mwSize *basisdims;
     double *basis;
     const mxArray *convres_f_array;
     const mxArray *convres_c_array;
     double **G;
     double **h_r;
     double **h_i;
-    int indices[3];
+    mwSize indices[3];
     int index;
     int dimensionality;
     int num_outdims;
-    int outdims[4];
-    int *cout_dimensions = NULL;
+    mwSize outdims[4];
+    mwSize *cout_dimensions = NULL;
     mxArray *r_array;
     double *r_r;
     double *r_i;
@@ -261,10 +261,10 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	    if (cout == NULL)
 	    {
 		int cout_num_dims;
-		const int *cout_dims;
+		const mwSize *cout_dims;
 		cout_num_dims = mxGetNumberOfDimensions(this_cout_array);
 		cout_dims = mxGetDimensions(this_cout_array);
-		cout_dimensions = (int *)mxCalloc(dimensionality
+		cout_dimensions = (mwSize *)mxCalloc(dimensionality
 						  + cout_num_dims,
 						  sizeof(int));
 		for (i = 0; i < dimensionality; i++)

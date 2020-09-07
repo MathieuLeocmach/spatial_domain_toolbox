@@ -19,16 +19,16 @@
 
 void
 solve_directly2D(double *f, double *rhs, double *f_out,
-		 int M, int N)
+		 mwSize M, mwSize N)
 {
-  int s = M * N;
-  int dims[2];
+  mwSize s = M * N;
+  mwSize dims[2];
   mxArray *A_array;
   mxArray *b_array;
   double *A;
   double *b;
-  int k;
-  int i, j;
+  mwSize k;
+  mwSize i, j;
   mxArray *x_array;
   mxArray *input_arrays[2];
   
@@ -75,11 +75,11 @@ solve_directly2D(double *f, double *rhs, double *f_out,
 
 /* Gauss-Seidel smoothing iteration. Red-black ordering. */
 void
-gauss_seidel2D(double *f, double *d, int M, int N)
+gauss_seidel2D(double *f, double *d, mwSize M, mwSize N)
 {
   int pass;
-  int i, j;
-  int index;
+  mwSize i, j;
+  mwSize index;
   
   for (pass = 0; pass <= 1; pass++)
   {
@@ -117,12 +117,12 @@ gauss_seidel2D(double *f, double *d, int M, int N)
 
 
 void
-downsample2D(double *rhs, int M, int N,
-	     double *rhs_coarse, int Mhalf, int Nhalf)
+downsample2D(double *rhs, mwSize M, mwSize N,
+	     double *rhs_coarse, mwSize Mhalf, mwSize Nhalf)
 {
-  int i, j;
-  int index1;
-  int index2;
+  mwSize i, j;
+  mwSize index1;
+  mwSize index2;
   
   if (M % 2 == 0 && N % 2 == 0)
   {
@@ -300,14 +300,14 @@ downsample2D(double *rhs, int M, int N,
 
 /* Upsample and apply correction. Bilinear interpolation. */
 void
-upsample2D(double *rhs, int M, int N,
-	   double *v, int Mhalf, int Nhalf,
+upsample2D(double *rhs, mwSize M, mwSize N,
+	   double *v, mwSize Mhalf, mwSize Nhalf,
 	   double *f_out)
 {
-  int i, j;
-  int index1, index2;
-  int ce, no, so, we, ea, nw, sw, ne, se;
-  int CE, NO, SO, WE, EA, SW, NE, SE;
+  mwSize i, j;
+  mwSize index1, index2;
+  mwSize ce, no, so, we, ea, nw, sw, ne, se;
+  mwSize CE, NO, SO, WE, EA, SW, NE, SE;
   
   if (M % 2 == 0 && N % 2 == 0)
   {
@@ -568,15 +568,15 @@ void
 poisson_multigrid2D(double *f, double *d,
 		    int n1, int n2, int nm,
 		    double *f_out,
-		    int M, int N, int *directly_solved)
+		    mwSize M, mwSize N, int *directly_solved)
 {
-  int i, j;
-  int k;
+  mwSize i, j;
+  mwSize k;
   double *r;
   double *r_downsampled;
   double *v;
-  int Mhalf;
-  int Nhalf;
+  mwSize Mhalf;
+  mwSize Nhalf;
   
   /* Solve a sufficiently small problem directly. */
   if (M < RECURSION_SIZE_LIMIT || N < RECURSION_SIZE_LIMIT)
@@ -599,7 +599,7 @@ poisson_multigrid2D(double *f, double *d,
   for (j = 0; j < N; j++)
     for (i = 0; i < M; i++)
     {
-      int index = j * M + i;
+      mwSize index = j * M + i;
       double residual = d[index] + 4 * f_out[index];
       if (i == 0)
 	residual -= f_out[index + 1];
@@ -656,18 +656,18 @@ poisson_multigrid2D(double *f, double *d,
 /* It is assumed that f_out is initialized to zero when called. */
 void
 poisson_full_multigrid2D(double *rhs, int number_of_iterations,
-			 int M, int N, double *f_out)
+			 mwSize M, mwSize N, double *f_out)
 {
   double *rhs_downsampled;
   double *f_coarse;
-  int k;
+  mwSize k;
   
   /* Unless already coarsest scale, first recurse to coarser scale. */
   if (M >= RECURSION_SIZE_LIMIT && N >= RECURSION_SIZE_LIMIT)
   {
     /* Downsample right hand side. */
-    int Mhalf = (M + 1) / 2;
-    int Nhalf = (N + 1) / 2;
+    mwSize Mhalf = (M + 1) / 2;
+    mwSize Nhalf = (N + 1) / 2;
     rhs_downsampled = mxCalloc(Mhalf * Nhalf, sizeof(*rhs_downsampled));
     downsample2D(rhs, M, N, rhs_downsampled, Mhalf, Nhalf);
     
@@ -696,12 +696,12 @@ poisson_full_multigrid2D(double *rhs, int number_of_iterations,
 
 void
 antigradient2D(double *g, double mu, int number_of_iterations,
-	       int M, int N, double *f_out)
+	       mwSize M, mwSize N, double *f_out)
 {
   double *rhs;
   double sum;
   double mean;
-  int i, j;
+  mwSize i, j;
   
   /* Compute right hand side of Poisson problem with Neumann
    * boundary conditions, discretized by finite differences.
@@ -710,8 +710,8 @@ antigradient2D(double *g, double mu, int number_of_iterations,
   for (j = 0; j < N; j++)
     for (i = 0; i < M; i++)
     {
-      int index1 = j * M + i;
-      int index2 = index1 + M * N;
+      mwSize index1 = j * M + i;
+      mwSize index2 = index1 + M * N;
       double d = 0.0;
       
       if (i == 0)
@@ -755,16 +755,16 @@ antigradient2D(double *g, double mu, int number_of_iterations,
 void
 solve_directly3D(double *f, double *rhs,
 		 double *f_out,
-		 int M, int N, int P)
+		 mwSize M, mwSize N, mwSize P)
 {
-  int s = M * N * P;
-  int dims[2];
+  mwSize s = M * N * P;
+  mwSize dims[2];
   mxArray *A_array;
   mxArray *b_array;
   double *A;
   double *b;
-  int k;
-  int i, j, p;
+  mwSize k;
+  mwSize i, j, p;
   mxArray *x_array;
   mxArray *input_arrays[2];
   
@@ -816,12 +816,12 @@ solve_directly3D(double *f, double *rhs,
 
 /* Gauss-Seidel smoothing iteration. Red-black ordering. */
 void
-gauss_seidel3D(double *f, double *d, int M, int N, int P)
+gauss_seidel3D(double *f, double *d, mwSize M, mwSize N, mwSize P)
 {
   int pass;
-  int i, j, p;
-  int index;
-  int MN = M * N;
+  mwSize i, j, p;
+  mwSize index;
+  mwSize MN = M * N;
   
   for (pass = 0; pass <= 1; pass++)
   {
@@ -868,13 +868,13 @@ gauss_seidel3D(double *f, double *d, int M, int N, int P)
 }
 
 void
-downsample3D(double *rhs, int M, int N, int P,
-             double *rhs_coarse, int Mhalf, int Nhalf, int Phalf)
+downsample3D(double *rhs, mwSize M, mwSize N, mwSize P,
+             double *rhs_coarse, mwSize Mhalf, mwSize Nhalf, mwSize Phalf)
 {
-  int i, j, p;
-  int index1;
-  int index2;
-  int MN = M * N;
+  mwSize i, j, p;
+  mwSize index1;
+  mwSize index2;
+  mwSize MN = M * N;
   
   if (M % 2 == 0 && N % 2 == 0 && P % 2 == 0)
   {
@@ -1992,15 +1992,15 @@ downsample3D(double *rhs, int M, int N, int P,
 
 
 void
-upsample3D(double *rhs, int M, int N, int P,
-           double *v, int Mhalf, int Nhalf, int Phalf,
+upsample3D(double *rhs, mwSize M, mwSize N, mwSize P,
+           double *v, mwSize Mhalf, mwSize Nhalf, mwSize Phalf,
            double *f_out)
 {
-  int i, j, p;
-  int index1;
-  int index2;
-  int MN = M * N;
-  int MNhalf = Mhalf * Nhalf;
+  mwSize i, j, p;
+  mwSize index1;
+  mwSize index2;
+  mwSize MN = M * N;
+  mwSize MNhalf = Mhalf * Nhalf;
   
   if (M % 2 == 0 && N % 2 == 0 && P % 2 == 0)
   {
@@ -4054,17 +4054,17 @@ void
 poisson_multigrid3D(double *f, double *d,
 		    int n1, int n2, int nm,
 		    double *f_out,
-		    int M, int N, int P, int *directly_solved)
+		    mwSize M, mwSize N, mwSize P, int *directly_solved)
 {
-  int i, j, p;
-  int k;
+  mwSize i, j, p;
+  mwSize k;
   double *r;
   double *r_downsampled;
   double *v;
-  int Mhalf;
-  int Nhalf;
-  int Phalf;
-  int MN = M * N;
+  mwSize Mhalf;
+  mwSize Nhalf;
+  mwSize Phalf;
+  mwSize MN = M * N;
   
   /* Solve a sufficiently small problem directly. */
   if (M < RECURSION_SIZE_LIMIT
@@ -4090,7 +4090,7 @@ poisson_multigrid3D(double *f, double *d,
     for (j = 0; j < N; j++)
       for (i = 0; i < M; i++)
       {
-	int index = (p * N + j) * M + i;
+	mwSize index = (p * N + j) * M + i;
 	double residual = d[index] + 6 * f_out[index];
 	if (i == 0)
 	  residual -= f_out[index + 1];
@@ -4158,11 +4158,11 @@ poisson_multigrid3D(double *f, double *d,
 /* It is assumed that f_out is initialized to zero when called. */
 void
 poisson_full_multigrid3D(double *rhs, int number_of_iterations,
-			 int M, int N, int P, double *f_out)
+			 mwSize M, mwSize N, mwSize P, double *f_out)
 {
   double *rhs_downsampled;
   double *f_coarse;
-  int k;
+  mwSize k;
   
   /* Unless already coarsest scale, first recurse to coarser scale. */
   if (M >= RECURSION_SIZE_LIMIT
@@ -4170,9 +4170,9 @@ poisson_full_multigrid3D(double *rhs, int number_of_iterations,
       && P >= RECURSION_SIZE_LIMIT)
   {
     /* Downsample right hand side. */
-    int Mhalf = (M + 1) / 2;
-    int Nhalf = (N + 1) / 2;
-    int Phalf = (P + 1) / 2;
+    mwSize Mhalf = (M + 1) / 2;
+    mwSize Nhalf = (N + 1) / 2;
+    mwSize Phalf = (P + 1) / 2;
     rhs_downsampled = mxCalloc(Mhalf * Nhalf * Phalf,
 			       sizeof(*rhs_downsampled));
     downsample3D(rhs, M, N, P, rhs_downsampled, Mhalf, Nhalf, Phalf);
@@ -4198,13 +4198,13 @@ poisson_full_multigrid3D(double *rhs, int number_of_iterations,
 
 void
 antigradient3D(double *g, double mu, int number_of_iterations,
-	       int M, int N, int P, double *f_out)
+	       mwSize M, mwSize N, mwSize P, double *f_out)
 {
   double *rhs;
   double sum;
   double mean;
-  int i, j, p;
-  int MN = M * N;
+  mwSize i, j, p;
+  mwSize MN = M * N;
   
   /* Compute right hand side of Poisson problem with Neumann
    * boundary conditions, discretized by finite differences.
@@ -4214,9 +4214,9 @@ antigradient3D(double *g, double mu, int number_of_iterations,
     for (j = 0; j < N; j++)
       for (i = 0; i < M; i++)
       {
-	int index1 = (p * N + j) * M + i;
-	int index2 = index1 + M * N * P;
-	int index3 = index1 + 2 * M * N * P;
+	mwSize index1 = (p * N + j) * M + i;
+	mwSize index2 = index1 + M * N * P;
+	mwSize index3 = index1 + 2 * M * N * P;
 	double d = 0.0;
 	
 	if (i == 0)
@@ -4266,7 +4266,7 @@ antigradient3D(double *g, double mu, int number_of_iterations,
 void
 mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-  int M, N, P;
+  mwSize M, N, P;
   double *g;
   double *f_out;
   double mu;
