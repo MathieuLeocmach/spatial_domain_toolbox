@@ -30,7 +30,7 @@ sigma: Standard deviation of the Gaussian. Default for a cutoff at 0.005.
 
     if sigma is None:
         delta = 0.005
-        sigma = n/sqrt(-2*log(delta))
+        sigma = n/math.sqrt(-2*log(delta))
 
     I = np.arange(-n, n+1)**2
 
