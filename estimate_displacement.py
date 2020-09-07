@@ -105,9 +105,9 @@ def quadratic_to_Abc(r):
     basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
     basis = basis[:,basis.sum(0)<3]
     c = np.ascontiguousarray(r[...,0])
-    b = np.ascontiguousarray(r[...,basis.sum(0)==1][...,::-1])
+    b = np.ascontiguousarray(r[...,basis.sum(0)==1])
     A = np.zeros(r.shape[:-1]+(N,N))
-    for i,j, v in zip(*np.triu_indices(N), np.moveaxis(r[...,basis.sum(0)==2][...,::-1], -1, 0)):
+    for i,j, v in zip(*np.triu_indices(N), np.moveaxis(r[...,basis.sum(0)==2], -1, 0)):
         A[...,i,j] = v
     A = 0.5*(A + np.swapaxes(A, -2,-1))
     return A, b, c
