@@ -70,7 +70,7 @@ class ConvResults:
     """Container for (partial) convolution results of a signal by separable
     basis and applicability"""
 
-    def __init__(self, signal, applicability, region_of_interest):
+    def __init__(self, signal, applicability, region_of_interest, basis):
         """
 signal: Signal values. Must be real and nonsparse.
 
@@ -83,52 +83,59 @@ along the corresponding dimensions.
         #self.signal = signal
         self.applicability = applicability
         self.region_of_interest = region_of_interest
+        self.basis = basis
         self._res = {(0,)*signal.ndim:signal}
         self.shape = signal.shape
         # Set up the monomial coordinates.
         self.X = monomials(applicability)
-        for k, ap in enumerate(applicability):
-            self._res[(0,)*signal.ndim] = conv3(
-                self._res[(0,)*signal.ndim],
-                ap.reshape(self.X[k].shape),
-                self.get_roi(k)
-                )
+        # The order in which convolutions are performed is crucial
+        # We want to perform each calculation only once, and store in memory
+        # just what is needed. Therefore, for each dimension, we perform
+        # convolution with monomials by descending order. In particular, the
+        # zeroth order monomial is convolved last in order not to alter the
+        # input of convolution for higher order monomials.
+        sorted_basis = basis[::-1,np.lexsort(basis)][::-1,::-1]
+        # Example for 2D quadratic base:
+        # 0 1 0 2 1 0
+        # 2 1 1 0 0 0
+
+        # Perform convolution on fastest varrying dimension first
+        for dim in range(signal.ndim-1,-1,-1):
+            roi = self.get_roi(dim)
+            #to avoid repeated calculations, we remember what what computed last
+            last_index = sorted_basis[:,0] -1
+            for bf in sorted_basis.T:
+                e = bf[dim]
+                index = np.copy(bf)
+                index[:dim] = 0
+                if np.all(index == last_index):
+                    continue
+                last_index = index
+                prior = np.copy(index)
+                prior[dim] = 0
+                index = tuple(index.tolist())
+                prior = tuple(prior.tolist())
+                # Compute the convolution
+                self._res[index] = conv3(
+                    self._res[prior],
+                    self.applicability[dim].reshape(self.X[dim].shape) * self.X[dim]**e,
+                    roi
+                    )
 
 
-    def __getitem__(self, index):
-        """If existing, retrieves the (partial) convolution result
-        corresponding to index, otherwise compute and cache it.
-
-        Example:
-        Index (0,2,1) returns the convolution by y**2 and x
-        Index (2,0,0) returns the convolution by z**3
+    def __getitem__(self, j):
+        """Retrieves the (partial) convolution result corresponding to element j
+        of basis.
         """
-        assert len(index) == len(self.shape)
-        if isinstance(index, np.ndarray):
-            index = tuple(index.tolist())
-        if index not in self._res:
-            #first nonzero index, i.e. the slowest varrying dimension
-            k = np.where(np.array(index)>0)[0][0]
-            e = index[k]
-            prior = np.array(index)
-            prior[k] = 0
-            # Retrieve or compute recursively the prior partial result where
-            # only the convolution on the slowest varrying dimension is missing
-            prior = self[prior]
-            # Compute the convolution on the slowest varrying dimension
-            self._res[index] = conv3(
-                prior,
-                self.applicability[k].reshape(self.X[k].shape) * self.X[k]**e,
-                self.get_roi(k)
-                )
+        index =  tuple(self.basis[:,j].tolist())
         return self._res[index]
 
-    def get_roi(self, k):
+    def get_roi(self, dim):
         # Region of interest must be carefully computed to avoid needless
         # loss of accuracy.
         roi = self.region_of_interest
         N = len(self.shape)
-        for l in range(k-1):
+        for l in range(dim-1):
             roi[l, 0] += np.min(self.X[l])
             roi[l, 1] += np.max(self.X[l])
         roi[:,0] = np.maximum(0, roi[:,0])
@@ -138,13 +145,13 @@ along the corresponding dimensions.
         #index[:k+1] = 0
         #prev = self[index]
         #roi = roi[:prev.ndims]
-        if k < N-1:
+        if dim < N-1:
             # We are working on a convolution result that has already been
             # trimmed. So we have to ensure that the roi along the k
             # direction starts at 0
-            koffset = roi[k,0] - max(0, roi[k,0] + np.min(self.X[k]))
+            koffset = roi[dim,0] - max(0, roi[dim,0] + np.min(self.X[dim]))
             roi -= np.repeat(roi[:,0,None], 2, axis=1)
-            roi[k] += koffset
+            roi[dim] += koffset
         return roi
 
 def polyexp(signal, certainty=None, basis='quadratic', spatial_size=9, sigma=None,
@@ -405,15 +412,13 @@ is just linear and in 3D it should rather be called trilinear."""
         Ginv = np.linalg.inv(G)
 
         # Delegate convolution calculations to ConvResults class
-        # Nothing is computed until we ask.
-        convres = ConvResults(signal, applicability, region_of_interest)
+        convres = ConvResults(signal, applicability, region_of_interest, basis)
 
         # Ready to multiply with the inverse metric.
         r = np.zeros(list(np.diff(region_of_interest, axis=1)[:,0])+[M,])
         for j in range(M):
             for i in range(M):
-                index = np.copy(basis[:,i])
-                r[...,j] += Ginv[j,i] * convres[index]
+                r[...,j] += Ginv[j,i] * convres[i]
         if not cout_needed:
             return r
         #not optimized, but not used often
