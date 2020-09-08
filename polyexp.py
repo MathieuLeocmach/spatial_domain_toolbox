@@ -87,6 +87,12 @@ along the corresponding dimensions.
         self.shape = signal.shape
         # Set up the monomial coordinates.
         self.X = monomials(applicability)
+        for k, ap in enumerate(applicability):
+            self._res[(0,)*signal.ndim] = conv3(
+                self._res[(0,)*signal.ndim],
+                ap.reshape(self.X[k].shape),
+                self.get_roi(k)
+                )
 
 
     def __getitem__(self, index):
