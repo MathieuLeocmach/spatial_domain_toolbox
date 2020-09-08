@@ -125,9 +125,12 @@ along the corresponding dimensions.
 
     def __getitem__(self, j):
         """Retrieves the (partial) convolution result corresponding to element j
-        of basis.
+        of basis. j can also be directly the basis element
         """
-        index =  tuple(self.basis[:,j].tolist())
+        if isinstance(j, np.ndarray):
+            index = tuple(j.tolist())
+        else:
+            index =  tuple(self.basis[:,j].tolist())
         return self._res[index]
 
     def get_roi(self, dim):
@@ -435,16 +438,24 @@ is just linear and in 3D it should rather be called trilinear."""
         # basis. Things do become even more intricate.
 
         # Delegate convolution calculations to ConvResults class
-        # Nothing is computed until we ask.
-        convres_f = ConvResults(signal*certainty, applicability, region_of_interest)
-        convres_c = ConvResults(certainty, applicability, region_of_interest)
+        convres_f = ConvResults(signal*certainty, applicability, region_of_interest, basis)
 
-        #Compute and store convolution results in one MxM matrix and one
-        # M vector per pixel
+        # basis_c is the set of unique pairwise products of the basis functions.
+        # In term of monomial order, it's additions.
+        basis_c = (basis[:,:,None] + basis[:,None,:]).reshape((N, M**2))
+        #unicity
+        basis_c = basis_c[:,np.lexsort(basis_c[::-1])]
+        mask = np.ones(basis_c.shape[1], np.bool)
+        mask[1:] = np.any(np.diff(basis_c, axis=1)!=0, axis=0)
+        basis_c = basis_c[:,mask]
+        # Delegate convolution calculations to ConvResults class
+        convres_c = ConvResults(certainty, applicability, region_of_interest, basis_c)
+
+        #Store convolution results in one MxM matrix and one M vector per pixel
         h = np.zeros(convres_f.shape+(M,))
         G = np.zeros(convres_f.shape+(M,M))
         for i in range(M):
-            h[...,i] = convres_f[basis[:,i]]
+            h[...,i] = convres_f[i]
             for j in range(M):
                 G[...,i,j] = convres_c[basis[:,i]+basis[:,j]]
         # Normalize the convolution
