@@ -83,11 +83,11 @@ clear_quadratic_form(double *Q, int motion_model)
 }
 
 static void
-add_to_quadratic_form(double *Q, double *T, int x, int y, int xsize,
-		      int ysize, int motion_model, int debug)
+add_to_quadratic_form(double *Q, double *T, int x, int y, mwSize xsize,
+		      mwSize ysize, int motion_model, int debug)
 {
-    int index = x + y * xsize;
-    int N = xsize * ysize;
+    mwSize index = x + y * xsize;
+    mwSize N = xsize * ysize;
     double T11 = T[index];
     double T12 = T[index + N];
     double T13 = T[index + 2*N];
@@ -366,11 +366,11 @@ compute_velocity(double *vx, double *vy, int x, int y, double *param,
 }
 
 static double
-normalized_distance(double *T, int x, int y, int xsize, int ysize,
+normalized_distance(double *T, int x, int y, mwSize xsize, mwSize ysize,
 		    double *param, int motion_model)
 {
-    int index = x + y * xsize;
-    int N = xsize * ysize;
+    mwSize index = x + y * xsize;
+    mwSize N = xsize * ysize;
     double T11 = T[index];
     double T12 = T[index + N];
     double T13 = T[index + 2*N];
@@ -516,7 +516,7 @@ get_first_candidate(int *heap, int *n, struct candidate* candidates)
 
 static int
 rebuild_candidate(struct candidate *candidate, int *map,
-		  int minsize, int maxsize, int xsize, int ysize,
+		  mwSize minsize, mwSize maxsize, mwSize xsize, mwSize ysize,
 		  int *heap, double *costs, int *pixels, double *T,
 		  double *Q, int debug)
 {
@@ -524,7 +524,7 @@ rebuild_candidate(struct candidate *candidate, int *map,
     int heapsize = 0;
     int x = candidate->x;
     int y = candidate->y;
-    int index = x + y*xsize;
+    mwSize index = x + y*xsize;
     double largest_cost = 0.0;
     int i;
 
@@ -563,7 +563,7 @@ rebuild_candidate(struct candidate *candidate, int *map,
 	}
 	if (x-1 >= 0) /* North */
 	{
-	    int newindex = index - 1;
+	    mwSize newindex = index - 1;
 	    if (map[newindex] == 0)
 	    {
 		costs[newindex] = normalized_distance(T, x-1, y, xsize, ysize,
@@ -574,7 +574,7 @@ rebuild_candidate(struct candidate *candidate, int *map,
 	}
 	if (y+1 < ysize) /* East */
 	{
-	    int newindex = index + xsize;
+	    mwSize newindex = index + xsize;
 	    if (map[newindex] == 0)
 	    {
 		costs[newindex] = normalized_distance(T, x, y+1, xsize, ysize,
@@ -585,7 +585,7 @@ rebuild_candidate(struct candidate *candidate, int *map,
 	}
 	if (y-1 >= 0) /* West */
 	{
-	    int newindex = index - xsize;
+	    mwSize newindex = index - xsize;
 	    if (map[newindex] == 0)
 	    {
 		costs[newindex] = normalized_distance(T, x, y-1, xsize, ysize,
@@ -735,7 +735,7 @@ ascend_in_pixel_heap(int *heap, int heapsize, double *costs,
 }
 
 static void
-maybe_add_boundary_pixel(double *T, int x, int y, int xsize, int ysize,
+maybe_add_boundary_pixel(double *T, int x, int y, mwSize xsize, mwSize ysize,
 			 struct region *regions, int n,
 			 int *pixels_heap, int *pixels_heap_size,
 			 double *pixel_costs, int *pixel_heap_position,
@@ -762,8 +762,8 @@ maybe_add_boundary_pixel(double *T, int x, int y, int xsize, int ysize,
 
 static void
 recompute_all_parameters(int *map, struct region *regions, int
-			 number_of_regions, double *T, int xsize,
-			 int ysize) 
+			 number_of_regions, double *T, mwSize xsize,
+			 mwSize ysize) 
 {
     double *Qs;
     int x, y;
@@ -795,8 +795,8 @@ recompute_all_parameters(int *map, struct region *regions, int
 void
 mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-    int minsize = DEFAULT_MINSIZE;
-    int maxsize = DEFAULT_MAXSIZE;
+    mwSize minsize = DEFAULT_MINSIZE;
+    mwSize maxsize = DEFAULT_MAXSIZE;
     int kerneldist = DEFAULT_KERNELDIST;
     double lambda = DEFAULT_LAMBDA;
     double coverage = DEFAULT_COVERAGE;
@@ -808,11 +808,11 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int number_of_candidates = 0;
     struct candidate *candidates;
     
-    const int *dims;
-    int xsize;
-    int ysize;
-    int i, j;
-    int x, y;
+    const mwSize *dims;
+    mwSize xsize;
+    mwSize ysize;
+    mwSize i, j;
+    mwSize x, y;
     
     double Q[(MAX_PARAMS+1) * (MAX_PARAMS+1)];
     double *T;
@@ -1203,7 +1203,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     /* Return the velocity field. */
     if (nlhs > 0)
     {
-	int dims[3];
+	mwSize dims[3];
 	double *param;
 	double vx;
 	double vy;

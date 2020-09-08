@@ -21,8 +21,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int x;
     int number_of_arrays;
     int number_of_points;
-    int *number_of_elements;
-    int *number_of_elements2;
+    mwSize *number_of_elements;
+    mwSize *number_of_elements2;
     int max_number_of_dimensions;
 
     /* Set if the callback function is a function handle
@@ -36,7 +36,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int number_of_extra_parameters;
     mxArray **input_arrays;
     mxArray **output_arrays;
-    int *dims;
+    mwSize *dims;
     int num_dims;
     
     /* Check the input and output arguments. */

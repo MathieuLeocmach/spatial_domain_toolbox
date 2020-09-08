@@ -23,11 +23,11 @@ void
 mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int i, j, k;
-    const int *Qtotdim;
+    const mwSize *Qtotdim;
     double *Qtot;
     mxArray *paramsarray;
     double *params;
-    int paramsdim[3];
+    mwSize paramsdim[3];
     mxArray *Qmatrix;
     double *Q;
     mxArray *qvector;

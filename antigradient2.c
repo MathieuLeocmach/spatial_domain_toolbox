@@ -40,10 +40,10 @@ clear_global_data()
 /*************** 2D ****************/
 
 static void
-logmatrix2D(double *M, int m, int n, char *name, char *logfunction)
+logmatrix2D(double *M, mwSize m, mwSize n, char *name, char *logfunction)
 {
   mxArray *M_array;
-  int dims[2];
+  mwSize dims[2];
   int i;
   mxArray *input_arrays[2];
   dims[0] = m;
@@ -59,10 +59,10 @@ logmatrix2D(double *M, int m, int n, char *name, char *logfunction)
 
 
 static void
-solve_directly2D(double *lhs, double *rhs, double *f_out, int M, int N)
+solve_directly2D(double *lhs, double *rhs, double *f_out, mwSize M, mwSize N)
 {
-  int s = M * N;
-  int dims[2];
+  mwSize s = M * N;
+  mwSize dims[2];
   mxArray *b_array;
   double *b;
   int i, j;
@@ -1183,10 +1183,10 @@ antigradient2D(double *g, double *mask, double mu, int number_of_iterations,
 /*************** 3D ****************/
 
 static void
-logmatrix3D(double *M, int m, int n, int p, char *name, char *logfunction)
+logmatrix3D(double *M, mwSize m, mwSize n, mwSize p, char *name, char *logfunction)
 {
   mxArray *M_array;
-  int dims[3];
+  mwSize dims[3];
   int i;
   mxArray *input_arrays[2];
   dims[0] = m;
@@ -1203,11 +1203,11 @@ logmatrix3D(double *M, int m, int n, int p, char *name, char *logfunction)
 
 
 static void
-solve_directly3D(double *lhs, double *rhs, double *f_out, int M, int N, int P)
+solve_directly3D(double *lhs, double *rhs, double *f_out, mwSize M, mwSize N, mwSize P)
 {
-  int s = M * N * P;
-  int MN = M * N;
-  int dims[2];
+  mwSize s = M * N * P;
+  mwSize MN = M * N;
+  mwSize dims[2];
   mxArray *b_array;
   double *b;
   int i, j, p;

@@ -183,12 +183,12 @@ normconv1(const double *signal_r,
 	  double *result_r,
 	  double *result_i,
 	  double *cout,
-	  const int *signal_dimensions,
-	  const int *model_dimensions,
-	  const int *result_dimensions,
+	  const mwSize *signal_dimensions,
+	  const mwSize *model_dimensions,
+	  const mwSize *result_dimensions,
 	  int basis_size,
-	  const int *start_indices,
-	  const int *stop_indices,
+	  const mwSize *start_indices,
+	  const mwSize *stop_indices,
 	  const double *roi,
 	  const char *cout_func_name,
 	  mxArray *cout_data_array,
@@ -452,12 +452,12 @@ normconv2(const double *signal_r,
 	  double *result_r,
 	  double *result_i,
 	  double *cout,
-	  const int *signal_dimensions,
-	  const int *model_dimensions,
-	  const int *result_dimensions,
+	  const mwSize *signal_dimensions,
+	  const mwSize *model_dimensions,
+	  const mwSize *result_dimensions,
 	  int basis_size,
-	  const int *start_indices,
-	  const int *stop_indices,
+	  const mwSize *start_indices,
+	  const mwSize *stop_indices,
 	  const double *roi,
 	  const char *cout_func_name,
 	  mxArray *cout_data_array,
@@ -768,12 +768,12 @@ normconv3(const double *signal_r,
 	  double *result_r,
 	  double *result_i,
 	  double *cout,
-	  const int *signal_dimensions,
-	  const int *model_dimensions,
-	  const int *result_dimensions,
+	  const mwSize *signal_dimensions,
+	  const mwSize *model_dimensions,
+	  const mwSize *result_dimensions,
 	  int basis_size,
-	  const int *start_indices,
-	  const int *stop_indices,
+	  const mwSize *start_indices,
+	  const mwSize *stop_indices,
 	  const double *roi,
 	  const char *cout_func_name,
 	  mxArray *cout_data_array,
@@ -1105,7 +1105,7 @@ normconv3(const double *signal_r,
 
 
 static int
-calc_single_subscript(const int *dimensions, const int *indices, int dim)
+calc_single_subscript(const mwSize *dimensions, const mwSize *indices, int dim)
 {
   int i;
   int sub = 0;
@@ -1119,8 +1119,8 @@ calc_single_subscript(const int *dimensions, const int *indices, int dim)
 }
 
 static int
-calc_single_subscript2(const int *dimensions, const int *indices,
-		       const int *start_indices, int dim)
+calc_single_subscript2(const mwSize *dimensions, const mwSize *indices,
+		       const mwSize *start_indices, int dim)
 {
   int i;
   int sub = 0;
@@ -1145,12 +1145,12 @@ normconv(const double *signal_r,
 	 double *result_i,
 	 double *cout,
 	 int dimensionality,
-	 const int *signal_dimensions,
-	 const int *model_dimensions,
-	 const int *result_dimensions,
+	 const mwSize *signal_dimensions,
+	 const mwSize *model_dimensions,
+	 const mwSize *result_dimensions,
 	 int basis_size,
-	 const int *start_indices,
-	 const int *stop_indices,
+	 const mwSize *start_indices,
+	 const mwSize *stop_indices,
 	 const double *roi,
 	 const char *cout_func_name,
 	 mxArray *cout_data_array,
@@ -1176,10 +1176,10 @@ normconv(const double *signal_r,
   double *this_cout;
   int cout_num_arguments;
   
-  int *result_indices;
-  int *model_indices;
-  int *signal_indices;
-  int *displacements;
+  mwSize *result_indices;
+  mwSize *model_indices;
+  mwSize *signal_indices;
+  mwSize *displacements;
   
   int signalindex;
   int modelindex;
@@ -1219,10 +1219,10 @@ normconv(const double *signal_r,
   arguments[0] = G_matrix;
   arguments[1] = h_vector;
   
-  result_indices = (int *)mxCalloc(dimensionality, sizeof(int));
-  model_indices  = (int *)mxCalloc(dimensionality, sizeof(int));
-  signal_indices = (int *)mxCalloc(dimensionality, sizeof(int));
-  displacements  = (int *)mxCalloc(dimensionality, sizeof(int));
+  result_indices = (mwSize *)mxCalloc(dimensionality, sizeof(int));
+  model_indices  = (mwSize *)mxCalloc(dimensionality, sizeof(int));
+  signal_indices = (mwSize *)mxCalloc(dimensionality, sizeof(int));
+  displacements  = (mwSize *)mxCalloc(dimensionality, sizeof(int));
   
   /* Initialize the first n result indices. Note that the model
    * indices already are initialized to zero by the call to
@@ -1493,21 +1493,21 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   int i;
   int dimensionality;
   int sn, cn, bn, an;
-  const int *sdim = NULL;
-  const int *cdim = NULL;
-  const int *bdim = NULL;
-  const int *adim = NULL;
-  int *signal_dimensions = NULL;
-  int *model_dimensions = NULL;
-  int *result_dimensions = NULL;
-  int *cout_dimensions = NULL;
+  const mwSize *sdim = NULL;
+  const mwSize *cdim = NULL;
+  const mwSize *bdim = NULL;
+  const mwSize *adim = NULL;
+  mwSize *signal_dimensions = NULL;
+  mwSize *model_dimensions = NULL;
+  mwSize *result_dimensions = NULL;
+  mwSize *cout_dimensions = NULL;
   mxArray *result_array = NULL;
   mxArray *cout_array = NULL;
   double *cout = NULL;
   double *region_of_interest = NULL;
   int startindex, stopindex;
-  int *start_indices = NULL;
-  int *stop_indices = NULL;
+  mwSize *start_indices = NULL;
+  mwSize *stop_indices = NULL;
   int basis_size;
   int optimization = 1;
   const mxArray *roi_array = NULL;
@@ -1617,8 +1617,8 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   /* Build dimension vectors for signal and model. Also check the
    * consistency of the dimensions.
    */
-  signal_dimensions = (int *)mxCalloc(dimensionality, sizeof(int));
-  model_dimensions  = (int *)mxCalloc(dimensionality, sizeof(int));
+  signal_dimensions = (mwSize *)mxCalloc(dimensionality, sizeof(int));
+  model_dimensions  = (mwSize *)mxCalloc(dimensionality, sizeof(int));
   
   if (cn != sn)
     mexErrMsgTxt("Signal and certainty must have the same size.");
@@ -1726,7 +1726,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     else
     {
       int ok = 1;
-      const int *roidim = mxGetDimensions(roi_array);
+      const mwSize *roidim = mxGetDimensions(roi_array);
       int roin;
       
       for (roin = mxGetNumberOfDimensions(roi_array); roin > 0; roin--)
@@ -1749,8 +1749,8 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }
   
   /* Create the start and stop indices. */
-  start_indices = (int *)mxCalloc(dimensionality, sizeof(int));
-  stop_indices  = (int *)mxCalloc(dimensionality, sizeof(int));
+  start_indices = (mwSize *)mxCalloc(dimensionality, sizeof(int));
+  stop_indices  = (mwSize *)mxCalloc(dimensionality, sizeof(int));
   
   if (roi_type != BOX_ROI)
   {
@@ -1777,7 +1777,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }
   
   /* Compute the output dimensions. */
-  result_dimensions = (int *)mxCalloc(dimensionality + 1, sizeof(int));
+  result_dimensions = (mwSize *)mxCalloc(dimensionality + 1, sizeof(int));
   for (i = 0; i < dimensionality; i++)
     result_dimensions[i] = stop_indices[i] - start_indices[i] + 1;
   result_dimensions[dimensionality] = basis_size;
@@ -1805,7 +1805,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     mxArray *sample_cout;
     int n_arguments = 4;
     int cout_num_dims;
-    const int *cout_dims;
+    const mwSize *cout_dims;
     /* First call cout_func to see how large output certainty we get.
      * We need one identity matrix of size MxM, where M is the number
      * of basis functions, plus one Mx1 zero vector.
@@ -1828,7 +1828,7 @@ mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		  cout_func_name);
     cout_num_dims = mxGetNumberOfDimensions(sample_cout);
     cout_dims = mxGetDimensions(sample_cout);
-    cout_dimensions = (int *)mxCalloc(dimensionality + cout_num_dims,
+    cout_dimensions = (mwSize *)mxCalloc(dimensionality + cout_num_dims,
 				      sizeof(int));
     for (i = 0; i < dimensionality; i++)
       cout_dimensions[i] = result_dimensions[i];

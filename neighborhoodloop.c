@@ -17,13 +17,13 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     int N;
-    int *neighborhoodsize;
+    mwSize *neighborhoodsize;
     int k, r;
     int x;
     int number_of_arrays;
     int number_of_points;
-    int *number_of_elements;
-    int *number_of_elements2;
+    mwSize *number_of_elements;
+    mwSize *number_of_elements2;
     int max_number_of_dimensions;
 
     /* Set if the callback function is a function handle
@@ -37,13 +37,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     int number_of_extra_parameters;
     mxArray **input_arrays;
     mxArray **output_arrays;
-    int *dims;
+    mwSize *dims;
     int num_dims;
 
-    int *neighborhood_coords;
-    int *neighborhood_delta;
+    mwSize *neighborhood_coords;
+    mwSize *neighborhood_delta;
     int number_of_neighborhood_points;
-    int *xcoords;
+    mwSize *xcoords;
 
     /* Check the input and output arguments. */
     

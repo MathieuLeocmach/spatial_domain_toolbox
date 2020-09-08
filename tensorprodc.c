@@ -17,14 +17,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     double *index_sizes = mxGetPr(prhs[0]);
     int number_of_indices = mxGetM(prhs[0]) * mxGetN(prhs[0]);
     int output_ndims = mxGetM(prhs[1]) * mxGetN(prhs[1]);
-    int *output_dims;
+    mwSize *output_dims;
     double *output;
     int k;
     int *indices;
     int number_index_values = 1;
     int x;
     int max_array_dims = output_ndims;
-    int *array_indices;
+    mwSize *array_indices;
     int output_index;
     double p;
     int m;
