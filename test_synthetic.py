@@ -22,7 +22,7 @@ def test_get_border():
     assert border[1,-2]
     assert np.all(border[2:-2,2:-2] == False)
 
-def test_single_square():
+def test_single_square_fast():
     """move a single square by 1 pixel"""
     im0 = np.zeros((64,64))
     im0[30:33, 32:35] = 1
@@ -96,6 +96,28 @@ def test_single_square():
     A, Delta_b = prepare_displacement_matrices(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
-    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="fast")
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
+    assert int(displ[31,33,0]) == 1
+    assert int(displ[31,33,1]) == 0
+
+def test_single_square_accurate():
+    """move a single square by 1 pixel"""
+    im0 = np.zeros((64,64))
+    im0[30:33, 32:35] = 1
+    #identical images should not detect displacement
+    displ, err = estimate_displacement(im0, im0, [5], [15], model="constant", method="accurate")
+    assert np.all(displ == 0)
+
+    #shift by one pixel on axis 0
+    im1 = np.zeros((64,64))
+    im1[31:34, 32:35] = 1
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
+
+    #shift by one pixel on axis 1
+    im1 = np.zeros((64,64))
+    im1[30:33, 33:36] = 1
+    displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
     assert int(displ[31,33,0]) == 1
     assert int(displ[31,33,1]) == 0
