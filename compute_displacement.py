@@ -147,7 +147,6 @@ displacement values.
 		displacement[...,0] = d*b - c*e
 		displacement[...,1] = a*e - c*d
 		displacement /= (a*b - c**2 + eps)[...,None]
-		displacement = -displacement
 
 		# Compute output certainty (Eq. 7.24)
 		# as Delta_b.T * Delta_b - d * q
