@@ -161,8 +161,8 @@ is less than N-dimensional, the singleton dimensions are removed.
     elif N==2:
         #Set up applicability and basis functions.
         applicability = a[None,:] * a[:,None]
-        #fastest varrying index first
-        x, y = np.meshgrid(np.arange(-n,n+1), np.arange(-n,n+1))
+        #fastest varrying index last
+        y,x = np.meshgrid(np.arange(-n,n+1), np.arange(-n,n+1))
         b = np.array([np.ones(x.shape), x, y, x**2, y**2, x*y])
         nb = b.shape[0]
 
@@ -175,7 +175,7 @@ is less than N-dimensional, the singleton dimensions are removed.
         del b, applicability, x, y
         Qinv = np.linalg.inv(Q)
 
-        #Convolutions in the y-direction.
+        #Convolutions in the y-direction (fastest varrying).
         # MATLAB version creates three (1,spatial_size) shaped array
         kernely0 = a
         kernely1 = np.arange(-n,n+1)*a
@@ -185,13 +185,13 @@ is less than N-dimensional, the singleton dimensions are removed.
         roiy[:,1] = np.minimum(roiy[:,1], len(signal))
         convy_results = np.zeros(np.diff(roiy, axis=1)[:,0].astype(int).tolist()+[3])
         for i, kern in enumerate([kernely0, kernely1, kernely2]):
-            # Here we ensures convolution along the slowest varrying index, i.e. y
-            convy_results[...,i] = conv3(signal, kern[:,None], roiy)
+            # Here we ensures convolution along the fastest varrying index, i.e. y
+            convy_results[...,i] = conv3(signal, kern[None,:], roiy)
 
-        #Convolutions in the x-direction (fastest varrying).
-        kernelx0 = kernely0[None,:]
-        kernelx1 = kernely1[None,:]
-        kernelx2 = kernely2[None,:]
+        #Convolutions in the x-direction (slowest varrying).
+        kernelx0 = kernely0[:,None]
+        kernelx1 = kernely1[:,None]
+        kernelx2 = kernely2[:,None]
         roix = region_of_interest
         roix = roix[:convy_results.ndim]
         #ensures the roi along the x direction starts at 0, since we are working on convy_results that has already been trimmed
