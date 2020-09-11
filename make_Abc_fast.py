@@ -10,12 +10,16 @@ import warnings
 import math
 import numpy as np
 import numpy.matlib
-from scipy.ndimage import convolve
+from scipy.ndimage import correlate
 
 def conv3(signal, kernel, roi=None):
-    """Quick and dirty implementation of convolution with a ROI."""
+    """Quick and dirty implementation of Farneback's `convolution` with a ROI.
+
+Note: The MATLAB implementation by Farneback, is not a convolution but a
+correlation since the kernel is not mirrored.
+    """
     assert signal.dtype.char in np.typecodes['Float'], "Signal must have real floating point values"
-    res = convolve(signal, kernel, mode='constant')
+    res = correlate(signal, kernel, mode='constant')
     if roi is None:
         return res
     return res[tuple(slice(a,b) for a,b in roi)]
