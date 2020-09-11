@@ -51,9 +51,13 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
         #we also take the opposite in order to be able to bring next image
         #on previous image
         #truncate the rounded displacement so that no pixel goes out
-        d = np.floor(0.5 - displacement[index]).astype(np.int64)[::-1]
+        d = np.floor(0.5 + displacement[index]).astype(np.int64)
         for dim in range(N):
-            d[dim] = min(max(d[dim], -index[dim]), shape[dim] -index[dim] -1)
+            if index[dim] + d[dim] <0:
+                d[dim] = -index[dim]
+            elif index[dim] + d[dim] >= shape[dim]:
+                d[dim] = shape[dim]-index[dim]-1
+            #d[dim] = min(max(d[dim], -index[dim]), shape[dim] -index[dim] -1)
         #flatten advected index
         index2 = 0
         for dim in range(N):
@@ -62,7 +66,8 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
         # advected average of the two A matrices (Eq. 7.32)
         A[index] = (A1[index] + A22[index2]) / 2
         # advected difference of the two vectors b (Eq. 7.33)
-        #df = d.astype(A.dtype)
-        bb2 = b22[index2] - 2 * A[index] @ displacement[index]
-        Delta_b[index] = -(bb2 - b1[index]) / 2
+        df = d.astype(A.dtype)
+        #bb2 = b22[index2] - 2 * A[index] @ displacement[index]
+        #Delta_b[index] = -(bb2 - b1[index]) / 2
+        Delta_b[index] = -0.5*(b22[index2] - b1[index]) + A[index] @ df
     return  A, Delta_b
