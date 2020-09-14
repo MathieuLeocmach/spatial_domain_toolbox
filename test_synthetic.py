@@ -30,20 +30,20 @@ def test_single_square_fast():
     #c0
     assert np.unravel_index(np.argmax(c0), im0.shape) == (31,33)
     #b0
-    assert np.unravel_index(np.argmin(b0[...,0]), im0.shape) == (31,31)
-    assert np.unravel_index(np.argmax(b0[...,0]), im0.shape) == (31,34)
-    assert np.unravel_index(np.argmin(b0[...,1]), im0.shape) == (29,33)
-    assert np.unravel_index(np.argmax(b0[...,1]), im0.shape) == (32,33)
+    assert np.unravel_index(np.argmin(b0[...,0]), im0.shape) == (32,33)
+    assert np.unravel_index(np.argmax(b0[...,0]), im0.shape) == (29,33)
+    assert np.unravel_index(np.argmin(b0[...,1]), im0.shape) == (31,34)
+    assert np.unravel_index(np.argmax(b0[...,1]), im0.shape) == (31,31)
     #A0 diagonal
-    assert np.unravel_index(np.argmax(A0[...,0,0]), im0.shape) in [(31,31), (31,35)]
-    assert A0[31,31,0,0] == A0[31,35,0,0]
-    assert np.unravel_index(np.argmin(A0[...,0,0]), im0.shape) in [(31,32), (31,34)]
-    assert A0[31,32,0,0] == A0[31,34,0,0]
-    assert np.unravel_index(np.argmax(A0[...,1,1]), im0.shape) in [(29,33), (33,33)]
-    assert A0[29,33,1,1] == A0[33,33,1,1]
-    assert np.unravel_index(np.argmin(A0[...,1,1]), im0.shape) in [(30,33), (32,33)]
-    assert A0[30,33,1,1] == A0[32,33,1,1]
-    assert A0[31,31,0,0] == A0[33,33,1,1]
+    assert np.unravel_index(np.argmin(A0[...,0,0]), im0.shape) in [(30,33), (32,33)]
+    assert A0[30,33,0,0] == A0[32,33,0,0]
+    assert np.unravel_index(np.argmax(A0[...,0,0]), im0.shape) in [(29,33), (33,33)]
+    assert A0[29,33,0,0] == A0[33,33,0,0]
+    assert np.unravel_index(np.argmin(A0[...,1,1]), im0.shape) in [(31,32), (31,34)]
+    assert A0[31,32,1,1] == A0[31,34,1,1]
+    assert np.unravel_index(np.argmax(A0[...,1,1]), im0.shape) in [(31,31), (31,35)]
+    assert A0[31,31,1,1] == A0[31,35,1,1]
+    assert A0[33,33,0,0] == A0[31,31,1,1]
     #A0 nondiagonal
     assert np.all(A0[...,0,1] == A0[...,1,0])
     A001M = [(29,31), (29,32), (30,31), (30,32), (32,34), (32,35), (33, 34), (33,35)]
@@ -75,8 +75,8 @@ def test_single_square_fast():
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
     displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="fast")
-    assert int(displ[31,33,0]) == 0
-    assert int(displ[31,33,1]) == 1
+    assert int(displ[31,33,0]) == 1
+    assert int(displ[31,33,1]) == 0
 
     #d0 = np.zeros_like(displ)
     #d0[...,1] = 1
@@ -97,8 +97,8 @@ def test_single_square_fast():
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
     displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
-    assert int(displ[31,33,0]) == 1
-    assert int(displ[31,33,1]) == 0
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
 
 def test_single_square_accurate():
     """move a single square by 1 pixel"""
@@ -112,12 +112,12 @@ def test_single_square_accurate():
     im1 = np.zeros((64,64))
     im1[31:34, 32:35] = 1
     displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
-    assert int(displ[31,33,0]) == 0
-    assert int(displ[31,33,1]) == 1
+    assert int(displ[31,33,0]) == 1
+    assert int(displ[31,33,1]) == 0
 
     #shift by one pixel on axis 1
     im1 = np.zeros((64,64))
     im1[30:33, 33:36] = 1
     displ, err = estimate_displacement(im0, im1, [5], [15], model="constant", method="accurate")
-    assert int(displ[31,33,0]) == 1
-    assert int(displ[31,33,1]) == 0
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
