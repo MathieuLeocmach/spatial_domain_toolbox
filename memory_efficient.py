@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 from scipy import sparse
 from scipy.ndimage import correlate1d
+import time
 
 class CorrelationBand:
     """Iterator that yield plane by plane the correlation results of a signal by
@@ -46,6 +47,7 @@ dtype: Numerical type of the inner storage.
         # not be stored.
         bandshape = (len(applicability[0]),)+shape[1:]
         # Create storage, fastest varrying dimension first, do not store slowest results
+        #t_alloc = time.time()
         for dim in range(len(shape)-1,0,-1):
             last_index = self.sorted_basis[:,0] -1
             for bf in self.sorted_basis.T:
@@ -57,6 +59,7 @@ dtype: Numerical type of the inner storage.
                 last_index = index
                 indextuple = tuple(index.tolist())
                 self._res[indextuple] = np.zeros(bandshape, dtype)
+        #print("time for memory allocation: %g ms"%(1e3*(time.time()-t_alloc)))
 
 
     def generator(self, signal):
@@ -77,11 +80,15 @@ that contains one coefficient per basis function, in the same order as the basis
         for value in self._res.values():
             value[:] = 0
 
+        #t_hyperplane = 0
+        #t_out = 0
+
         for z in range(self.shape[0]+thickness):
             # Internally, a new hyperplane overwrites the hyperplane that was input
             # thickness-of-the-band planes ago.
             rollingZ = z%thickness
 
+            #t_hp = time.time()
             if z < self.shape[0]:
                 # Store the hyperplane in the band
                 self._res[(0,)*N][rollingZ] = signal[z]
@@ -105,7 +112,7 @@ that contains one coefficient per basis function, in the same order as the basis
                         # Compute the correlation
                         correlate1d(
                             self._res[prior][rollingZ],
-                            self.applicability[dim] * self.X[dim].ravel()**e,
+                            (self.applicability[dim] * self.X[dim].ravel()**e).astype(self.dtype),
                             axis = dim-1, #because hyperplane as one dimension less
                             output = self._res[index][rollingZ],
                             mode='constant')
@@ -113,7 +120,9 @@ that contains one coefficient per basis function, in the same order as the basis
                 # if close to the edge, just erase the current hyperplane everywhere
                 for value in self._res.values():
                     value[rollingZ] = 0
+            #t_hyperplane += time.time() - t_hp
             if z >= halfth+1 and z+halfth<self.shape[0]:
+                #t_o = time.time()
                 # Prepare output
                 out = np.zeros(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
                 #roll monomial and applicability to be in phase with the current plane
@@ -126,9 +135,12 @@ that contains one coefficient per basis function, in the same order as the basis
                     prior = np.copy(index)
                     prior[0] = 0
                     prior = tuple(prior.tolist())
-                    kernel = (app * X**index[0]).reshape(self.X[0].shape)
+                    kernel = (app * X**index[0]).reshape(self.X[0].shape).astype(self.dtype)
                     out[...,b] = np.sum(self._res[prior] * kernel, axis=0)
+                #t_out += time.time() - t_o
                 yield out
+        #print("Time to convolve hyperplanes: %g ms"%(1e3*t_hyperplane))
+        #print("Time to convolve in the slowest dimension: %g ms"%(1e3*t_out))
 
 def monomials(applicability):
     """Return the monomial coordinates within the applicability range.
