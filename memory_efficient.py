@@ -190,7 +190,7 @@ of its dimensions)
     return B
 
 class metrics_SC:
-    """An object function to normalize by the metrics in the case of a separable correlation"""
+    """An object function to normalize by the metric in the case of a separable correlation"""
     def __init__(self, applicability, basis, dtype=np.float32):
         full_applicability = full_app(applicability)
         B = basis_functions(basis, full_applicability)
@@ -201,3 +201,70 @@ class metrics_SC:
     def __call__(self, corres):
         """Normalize correlation results by the metric"""
         return (self.Ginv @ corres[...,None]).reshape(corres.shape)
+
+class metrics_SNC:
+    """An object function to normalize by the metric in the case of a separable normalized correlation"""
+    def __init__(self, applicability, basis, certainty=None, dtype=np.float32):
+        N, M = basis.shape
+        basis_c = (basis[:,:,None] + basis[:,None,:]).reshape((N, M**2))
+        #unicity
+        basis_c = basis_c[:,np.lexsort(basis_c[::-1])]
+        mask = np.ones(basis_c.shape[1], np.bool)
+        mask[1:] = np.any(np.diff(basis_c, axis=1)!=0, axis=0)
+        basis_c = basis_c[:,mask]
+        self.ij2k = np.zeros((M,M), np.int64)
+        for i in range(M):
+            for j in range(M):
+                self.ij2k[i,j] = np.where(np.all(basis_c.T == basis[:,i]+basis[:,j], axis=1))[0]
+        if certainty is None:
+            #Compute only on a reduced shape with only a single central pixel that does not touch the edge of the image
+            shape = tuple(len(a) for a in applicability)
+            certainty = np.ones(shape, dtype=dtype)
+        else:
+            shape = certainty.shape
+        cb_c = CorrelationBand(shape, applicability, basis_c, dtype=dtype)
+        self.Ginvs = np.zeros(shape+(M,M), dtype=dtype)
+        for z,r_c in enumerate(cb_c.generator(certainty)):
+            r_c_ = r_c.reshape((np.prod(r_c.shape[:-1]), r_c.shape[-1]))
+            Ginv = np.zeros((r_c_.shape[0],M,M), dtype=dtype)
+            for l in range(r_c_.shape[0]):
+                G = np.zeros((M,M))
+                for i in range(M):
+                    for j in range(M):
+                        G[i,j] = r_c_[l, self.ij2k[i,j]]
+                Ginv[l] = np.linalg.pinv(G, hermitian=True)
+            self.Ginvs[z] = Ginv.reshape(self.Ginvs.shape[1:])
+
+    def __call__(self, corres, z=None, zlen=None):
+        """Normalize correlation results by the metric.
+
+If both z and zlen are None, corres is considered to be the whole signal.
+Otherwise zlen indicates the total number of planes in the signal and z the
+index of the current plane.
+        """
+        if zlen is None or z is None:
+            # We are not doing this plane by plane, but the whole signal at once.
+            assert corres.ndim == self.Ginvs.ndim -1, "Did you mean plane by plane?"
+            Ginv = self.Ginvs
+        else:
+            # Plane by plane
+            if self.Ginvs.shape[0] < zlen:
+                # Certainty was None, so we pickup the right plane of the inverse metric
+                half = self.Ginvs.shape[0]//2
+                if z < half:
+                    Ginv = self.Ginvs[z]
+                elif z+half < zlen:
+                    Ginv = self.Ginvs[half]
+                else:
+                    Ginv = self.Ginvs[z-zlen]
+            else:
+                # Certainty was not None, the inverse metric is straightforward
+                Ginv = self.Ginvs[z]
+        #expand the inverse metrics if needed (certainty was None)
+        for dim in range(corres.ndim-1):
+            if Ginv.shape[dim] < corres.shape[dim]:
+                half = Ginv.shape[dim]//2
+                n_repeat = np.ones(Ginv.shape[dim], np.int64)
+                n_repeat[half+1] = corres.shape[dim] - 2*half
+                Ginv = np.repeat(Ginv, n_repeat, axis=dim)
+        return (Ginv @ corres[...,None]).reshape(corres.shape)
