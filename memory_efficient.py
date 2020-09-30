@@ -268,3 +268,32 @@ index of the current plane.
                 n_repeat[half+1] = corres.shape[dim] - 2*half
                 Ginv = np.repeat(Ginv, n_repeat, axis=dim)
         return (Ginv @ corres[...,None]).reshape(corres.shape)
+
+class QuadraticToAbc:
+    """Convert projection coefficients to a quadratic basis into A matrix,
+    b vector and c scalar (pixel wise)"""
+    def __init__(self, N):
+        """N is the dimensionality of the signal"""
+        # generate a quadratic basis as inside function polyexp
+        basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+        basis = basis[:,basis.sum(0)<3]
+        self.index_c = 0
+        self.indices_b = np.where(basis.sum(0)==1)[0][::-1]
+        self.indices_A = np.where(basis.sum(0)==2)[0]
+
+    def c(self, r):
+        return np.ascontiguousarray(r[...,self.index_c])
+
+    def b(self, r):
+        return np.ascontiguousarray(r[...,self.indices_b])
+
+    def A(self, r):
+        N = r.ndim-1
+        A = np.zeros(r.shape[:-1]+(N,N), dtype=r.dtype)
+        for i,j, k in zip(*np.triu_indices(N), self.indices_A):
+            if i==j:
+                A[...,N-1-i,N-1-j] = r[...,k]
+            else:
+                A[...,N-1-i,N-1-j] = r[...,k]
+                A[...,N-1-i,N-1-j] *= 0.5
+                A[...,N-1-j,N-1-i] = A[...,N-1-i,N-1-j]
