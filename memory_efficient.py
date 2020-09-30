@@ -156,3 +156,48 @@ def monomials(applicability):
          n = int((k - 1) // 2)
          X.append(np.arange(-n,n+1).reshape((1,)*dim + (k,) + (1,)*(N-dim-1)))
     return X
+
+def full_app(applicability):
+    """Construct the full N-dimensional applicability kernel from a list of N applicabilities"""
+    N = len(applicability)
+    return np.prod([
+        a.reshape((1,)*dim + (len(a),) + (1,)*(N-dim-1))
+        for dim, a in enumerate(applicability)
+        ], axis=0)
+
+def basis_functions(basis, full_applicability):
+    """Basis functions in the applicability range.
+
+basis: A matrix of size NxM, where N is the signal dimensionality and M is the
+number of basis functions.
+
+full_applicability: A N dimensional array containing the applicability.
+
+---
+Returns
+
+B: A PxM matrix where P is the number of elements in full_applicability (product
+of its dimensions)
+    """
+    N,M = basis.shape
+    X = monomials(full_applicability)
+    B = np.zeros((np.prod(full_applicability.shape), M))
+    for j in range(M):
+        b = np.ones(full_applicability.shape)
+        for k in range(N):
+            b *= X[k]**basis[k,j]
+        B[:,j] = b.ravel()
+    return B
+
+class metrics_SC:
+    """An object function to normalize by the metrics in the case of a separable correlation"""
+    def __init__(self, applicability, basis, dtype=np.float32):
+        full_applicability = full_app(applicability)
+        B = basis_functions(basis, full_applicability)
+        W = sparse.diags(full_applicability.ravel())
+        G = B.T @ W @ B
+        self.Ginv = np.linalg.inv(G).astype(dtype)
+
+    def __call__(self, corres):
+        """Normalize correlation results by the metric"""
+        return (self.Ginv @ corres[...,None]).reshape(corres.shape)
