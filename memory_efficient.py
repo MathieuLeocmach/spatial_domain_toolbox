@@ -121,7 +121,7 @@ that contains one coefficient per basis function, in the same order as the basis
                 for value in self._res.values():
                     value[rollingZ] = 0
             #t_hyperplane += time.time() - t_hp
-            if z >= halfth+1 and z+halfth<self.shape[0]:
+            if z >= halfth+1 and z-halfth-1<self.shape[0]:
                 #t_o = time.time()
                 # Prepare output
                 out = np.zeros(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
