@@ -297,3 +297,4 @@ class QuadraticToAbc:
                 A[...,N-1-i,N-1-j] = r[...,k]
                 A[...,N-1-i,N-1-j] *= 0.5
                 A[...,N-1-j,N-1-i] = A[...,N-1-i,N-1-j]
+        return A
