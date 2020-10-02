@@ -308,3 +308,59 @@ hyperplane."""
                 A[...,N-1-i,N-1-j] *= 0.5
                 A[...,N-1-j,N-1-i] = A[...,N-1-i,N-1-j]
         return A
+
+def prepare_displacement_matrices_homogeneous(A1, b1, A2, b2, displacement=None):
+    """Compute matrices used for displacement estimation as defined by equations
+(7.32) and (7.33) in Gunnar Farnebäck's thesis "Polynomial Expansion for
+Orientation and Motion Estimation". Here we suppose an homogenous translation.
+
+A1,b1: Local polynomial expension coefficients at time 1. A1 is a N+2
+dimensional array, where the first N indices indicates the position in the
+signal and the last two contains the matrix for each point. In the same way, b1
+is a N+1 dimensional array. Such arrays can be obtained via QuadraticToAbc.
+
+A2,b2: Local polynomial expension coefficients at time 2.
+
+displacement: The global translation vector.
+
+----
+Returns
+
+A: Advected average of A1 and A2 matrices (Eq. 7.32)
+
+Delta_b: advected difference of b2 and b1 (Eq. 7.33)
+"""
+    assert A1.shape == A2.shape
+    assert A1.shape[:-1] == b1.shape
+    assert A1.shape[-1] == b1.shape[-1]
+    assert b1.shape == b2.shape
+    shape = A1.shape[:-2]
+    # N is the dimensionality of the signal we consider here (it might be
+    # an hyperplane of the original signal), not the rank of the matrices and
+    # vectors.
+    N = len(shape)
+    if displacement is None:
+        displacement = np.zeros(N, dtype=A1.dtype)
+    assert displacement.shape == (N,)
+    # Integral part of the displacement vector
+    displ = np.floor(0.5 + displacement).astype(np.int64)
+    # Advect A2 and b2 by rolling
+    A = np.roll(A2, displ, axis=tuple(range(N)))
+    Delta_b = -0.5*np.roll(b2, displ, axis=tuple(range(N)))
+    #take care of the margins by repeating the last available element of A2 or b2
+    for dim, d in enumerate(displ):
+        if d >= 0:
+            A[(slice(None,None),)*dim + (slice(0,d),)] = A2[(slice(None,None),)*dim + (slice(0,1),)]
+            Delta_b[(slice(None,None),)*dim + (slice(0,d),)] = -b2[(slice(None,None),)*dim + (slice(0,1),)]
+        else:
+            A[(slice(None,None),)*dim + (slice(-d,None),)] = A2[(slice(None,None),)*dim + (slice(-1,None),)]
+            Delta_b[(slice(None,None),)*dim + (slice(-d,None),)] = -0.5*b2[(slice(None,None),)*dim + (slice(-1,None),)]
+    #Advected average for A1 and A2
+    A += A1
+    A *= 0.5
+    # Advected difference for b1 and b2. Here we have to consider the full
+    # displacement vector, real-valued and same rank as the original signal dimension.
+    df = np.zeros(A1.shape[-1], A1.dtype)
+    df[-N:] = displacement
+    Delta_b += 0.5*b1 + A @ df
+    return A, Delta_b
