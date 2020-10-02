@@ -274,6 +274,7 @@ class QuadraticToAbc:
     b vector and c scalar (pixel wise)"""
     def __init__(self, N):
         """N is the dimensionality of the signal"""
+        self.N = N
         # generate a quadratic basis as inside function polyexp
         basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
         basis = basis[:,basis.sum(0)<3]
@@ -282,13 +283,22 @@ class QuadraticToAbc:
         self.indices_A = np.where(basis.sum(0)==2)[0]
 
     def c(self, r):
+        """r is the result of metric-normalised correlations with the quadratic
+basis. It can be either the total (N+1)-dimensional array, or a N-dimensional
+hyperplane."""
         return np.ascontiguousarray(r[...,self.index_c])
 
     def b(self, r):
+        """r is the result of metric-normalised correlations with the quadratic
+basis. It can be either the total (N+1)-dimensional array, or a N-dimensional
+hyperplane."""
         return np.ascontiguousarray(r[...,self.indices_b])
 
     def A(self, r):
-        N = r.ndim-1
+        """r is the result of metric-normalised correlations with the quadratic
+basis. It can be either the total (N+1)-dimensional array, or a N-dimensional
+hyperplane."""
+        N = self.N
         A = np.zeros(r.shape[:-1]+(N,N), dtype=r.dtype)
         for i,j, k in zip(*np.triu_indices(N), self.indices_A):
             if i==j:
