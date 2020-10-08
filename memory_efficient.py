@@ -364,3 +364,38 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     df[-N:] = displacement
     Delta_b += 0.5*b1 + A @ df
     return A, Delta_b
+
+def A_Deltab2G_h(A, Delta_b):
+    """Compute the useful coefficients of G=A.T@A and h = A.T * Delta_b
+
+A: A N+2 dimensional array, where the first N indices indicates the position in
+the signal and the last two contains the matrix for each point.
+
+Delta_b: A N+1 dimensional array, where the first N indices indicates the
+position in the signal and the last contains the vector for each point.
+
+----
+Returns
+
+M: A N+1 dimensional array, where the first N indices indicates the position in
+the signal and the last contains first the upper tiangular coefficients of G in
+the order given by np.triu_indices, and then the coefficients of h, for each
+point. That is D(D+3)/2 coefficients per points, with D the dimensionality of
+the original signal.
+"""
+    D = A.shape[-1]
+    shape = A.shape[:-2]
+    N = len(shape)
+    assert A.shape[-2] == D
+    assert Delta_b.shape[-1] == D
+    assert Delta_b.shape[:-1] == shape
+
+    M = np.zeros(shape+(D*(D+3)//2,), A.dtype)
+    #A.T * A, but A is symmetric
+    G = A @ A
+    #A.T * Delta_b, but A is symmetric
+    h = (A @ Delta_b[...,None])[...,0]
+    for k, (i,j) in enumerate(zip(*np.triu_indices(D,1))):
+        M[..., k] = G[...,i,j]
+        M[...,D*(D+1)//2:] = h
+    return M
