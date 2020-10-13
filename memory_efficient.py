@@ -445,4 +445,4 @@ x: The solution, having the same size as h.
         G[...,i,j] = Gh[...,k]
         G[...,j,i] = Gh[...,k]
     h = Gh[...,-D:]
-    return (pinv(G,rcond=1e-3,hermitian=True) @ h[...,None])[...,0]
+    return (np.linalg.pinv(G,rcond=1e-3,hermitian=True) @ h[...,None])[...,0]
