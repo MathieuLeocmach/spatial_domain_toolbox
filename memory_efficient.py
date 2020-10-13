@@ -440,7 +440,7 @@ Returns
 x: The solution, having the same size as h.
 """
     assert Gh.shape[-1] == D*(D+3)//2
-    G = np.zeros(Gh.shape[:-1]+(D,D))
+    G = np.zeros(Gh.shape[:-1]+(D,D), dtype=Gh.dtype)
     for k, (i,j) in enumerate(zip(*np.triu_indices(D))):
         G[...,i,j] = Gh[...,k]
         G[...,j,i] = Gh[...,k]
