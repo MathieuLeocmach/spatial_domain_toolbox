@@ -395,7 +395,7 @@ the original signal.
     G = A @ A
     #A.T * Delta_b, but A is symmetric
     h = (A @ Delta_b[...,None])[...,0]
-    for k, (i,j) in enumerate(zip(*np.triu_indices(D,1))):
+    for k, (i,j) in enumerate(zip(*np.triu_indices(D))):
         M[..., k] = G[...,i,j]
-        M[...,D*(D+1)//2:] = h
+        M[...,-D:] = h
     return M
