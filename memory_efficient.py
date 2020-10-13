@@ -421,3 +421,28 @@ the original signal.
         M[..., k] = G[...,i,j]
         M[...,-D:] = h
     return M
+
+def Gh2displ(Gh, D):
+    """Compute the least square solution to Gx = h, with G a (D,D) symmetric
+matrix and h a (D) vector which coefficients are stored in Gh (see A_Deltab2G_h).
+
+Gh: A N+1 dimensional array, where the first N indices indicates the position in
+the signal and the last contains first the upper tiangular coefficients of G in
+the order given by np.triu_indices, and then the coefficients of h, for each
+point. That is D(D+3)/2 coefficients per points, with D the dimensionality of
+the original signal.
+
+D: the dimensionality of the original signal.
+
+----
+Returns
+
+x: The solution, having the same size as h.
+"""
+    assert Gh.shape[-1] == D*(D+3)//2
+    G = np.zeros(Gh.shape[:-1]+(D,D))
+    for k, (i,j) in enumerate(zip(*np.triu_indices(D))):
+        G[...,i,j] = Gh[...,k]
+        G[...,j,i] = Gh[...,k]
+    h = Gh[...,-D:]
+    return (pinv(G,rcond=1e-3,hermitian=True) @ h[...,None])[...,0]
