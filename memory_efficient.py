@@ -8,9 +8,9 @@ class CorrelationBand:
     """Iterator that yield plane by plane the correlation results of a signal by
     separable basis and applicability"""
 
-    def __init__(self, shape, applicability, basis, dtype=np.float32):
+    def __init__(self, shape, applicability, basis, n_fields=None, dtype=np.float32):
         """
-Signal: Signal values. Must be real and nonsparse.
+shape: Spatial shape of the signal.
 
 applicability: A list containing one 1D vector for each signal dimension.
 
@@ -18,16 +18,22 @@ basis: A (N,B) matrix where N is the signal dimensionality and B is the number
 of polynomial basis functions. `basis[i,j]` is the order of the monomial along
 dimension i for basis function j.
 
+n_fields: Number of fields to correlate at the same time. Default is a single field.
+
 dtype: Numerical type of the inner storage.
 """
         assert len(shape) == len(applicability)
+        assert len(shape) == len(basis)
         #self.signal = signal
         self.applicability = applicability
         self.basis = basis
         self.shape = shape
+        self.n_fields = n_fields
         self.dtype = dtype
         # Set up the monomial coordinates.
         self.X = monomials(applicability)
+        if n_fields is not None:
+            self.X = [X[...,None] for X in self.X]
         # The order in which correlations are performed is crucial
         # We want to perform each calculation only once, and store in memory
         # just what is needed. Therefore, for each dimension, we perform
@@ -46,6 +52,8 @@ dtype: Numerical type of the inner storage.
         # Convolutions with monomials in the slowest varrying dimensions will
         # not be stored.
         bandshape = (len(applicability[0]),)+shape[1:]
+        if n_fields is not None:
+            bandshape = bandshape + (n_fields,)
         # Create storage, fastest varrying dimension first, do not store slowest results
         #t_alloc = time.time()
         for dim in range(len(shape)-1,0,-1):
@@ -66,13 +74,18 @@ dtype: Numerical type of the inner storage.
         """Generator that yields correlation results each hyperplane of the
 signal, for each basis function.
 
+signal: An array of shape `shape` (or `shape+(n_fields,)`). Must be real and nonsparse.
+
 ---
 Yield: An hyperplane of the correlation results perpendicular to the slowest
 varrying dimension (e.g. YX plane of a ZYX image) + a last dimension of size B
 that contains one coefficient per basis function, in the same order as the basis.
 """
         N = len(self.shape)
-        assert signal.shape == self.shape
+        if self.n_fields is None:
+            assert signal.shape == self.shape
+        else:
+            assert signal.shape == self.shape + (self.n_fields,)
         thickness = len(self.applicability[0])
         halfth = thickness//2
 
@@ -84,8 +97,8 @@ that contains one coefficient per basis function, in the same order as the basis
         #t_out = 0
 
         for z in range(self.shape[0]+thickness):
-            # Internally, a new hyperplane overwrites the hyperplane that was input
-            # thickness-of-the-band planes ago.
+            # Internally, a new hyperplane overwrites the hyperplane that was
+            # input thickness-of-the-band planes ago.
             rollingZ = z%thickness
 
             #t_hp = time.time()
@@ -93,8 +106,8 @@ that contains one coefficient per basis function, in the same order as the basis
                 # Store the hyperplane in the band
                 self._res[(0,)*N][rollingZ] = signal[z]
 
-                # Perform correlation on all the dimensions of the hyperplane, fastest
-                # varrying dimension first
+                # Perform correlation on all the dimensions of the hyperplane,
+                # fastest varrying dimension first
                 for dim in range(N-1,0,-1):
                     #to avoid repeated calculations, we remember what was computed last
                     last_index = self.sorted_basis[:,0] -1
@@ -124,12 +137,15 @@ that contains one coefficient per basis function, in the same order as the basis
             if z >= halfth+1 and z-halfth-1<self.shape[0]:
                 #t_o = time.time()
                 # Prepare output
-                out = np.zeros(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
+                if self.n_fields is None:
+                    out = np.zeros(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
+                else:
+                    out = np.zeros(self.shape[1:] + (self.n_fields,) + self.basis.shape[1:], dtype=self.dtype)
                 #roll monomial and applicability to be in phase with the current plane
                 rollshift = rollingZ-thickness
                 X = np.ascontiguousarray(np.roll(self.X[0].ravel(), rollshift))
                 app = np.ascontiguousarray(np.roll(self.applicability[0].ravel(), rollshift))
-                # Perform correlation in the slowest varraying dimension (along the
+                # Perform correlation in the slowest varrying dimension (along the
                 # thinckness of the band), in the order of the basis
                 for b, index in enumerate(self.basis.T):
                     prior = np.copy(index)
@@ -235,7 +251,7 @@ class metrics_SNC:
                 Ginv[l] = np.linalg.pinv(G, hermitian=True)
             self.Ginvs[z] = Ginv.reshape(self.Ginvs.shape[1:])
 
-    def __call__(self, corres, z=None, zlen=None):
+    def __call__(self, corres, z=None, zlen=None, n_fields=None):
         """Normalize correlation results by the metric.
 
 If both z and zlen are None, corres is considered to be the whole signal.
@@ -244,7 +260,10 @@ index of the current plane.
         """
         if zlen is None or z is None:
             # We are not doing this plane by plane, but the whole signal at once.
-            assert corres.ndim == self.Ginvs.ndim -1, "Did you mean plane by plane?"
+            if n_fields is None:
+                assert corres.ndim == self.Ginvs.ndim -1, "Did you mean plane by plane?"
+            else:
+                assert corres.ndim == self.Ginvs.ndim -2, "Did you mean plane by plane?"
             Ginv = self.Ginvs
         else:
             # Plane by plane
@@ -260,13 +279,16 @@ index of the current plane.
             else:
                 # Certainty was not None, the inverse metric is straightforward
                 Ginv = self.Ginvs[z]
+
         #expand the inverse metrics if needed (certainty was None)
-        for dim in range(corres.ndim-1):
+        for dim in range(Ginv.ndim-2):
             if Ginv.shape[dim] < corres.shape[dim]:
                 half = Ginv.shape[dim]//2
                 n_repeat = np.ones(Ginv.shape[dim], np.int64)
                 n_repeat[half+1] = corres.shape[dim] - 2*half
                 Ginv = np.repeat(Ginv, n_repeat, axis=dim)
+        if n_fields is not None:
+            Ginv = Ginv[...,None,:,:]
         return (Ginv @ corres[...,None]).reshape(corres.shape)
 
 class QuadraticToAbc:
