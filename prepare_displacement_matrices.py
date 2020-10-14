@@ -33,7 +33,7 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     shape = A1.shape[:-2]
     N = A1.shape[-1]
     if displacement is None:
-        displacement = np.zeros(shape + (N,))
+        displacement = np.zeros(shape + (N,), dtype=A1.dtype)
     #flatten all spatial dimensions of A2 and b2
     dimprod = 1
     for s in shape:
@@ -43,8 +43,8 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     #prepare strides to be able to flatten indices
     strides = (np.array(A2.strides[:-2]) / (N*N*A2.itemsize)).astype(np.int64)
 
-    A = np.zeros(A1.shape)
-    Delta_b = np.zeros(b1.shape)
+    A = np.zeros(A1.shape, dtype=A1.dtype)
+    Delta_b = np.zeros(b1.shape, dtype=A1.dtype)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for index in np.ndindex(shape):
         #displacement is given fast index first, so we revert
