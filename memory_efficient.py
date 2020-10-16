@@ -440,7 +440,7 @@ x: The solution, having the same size as h.
 """
     D = len(h)
     assert len(G) == D*(D+1)//2
-    GG = np.empty((D,D), dtype=GG.dtype)
+    GG = np.empty((D,D), dtype=G.dtype)
     for k, (i,j) in enumerate(zip(*np.triu_indices(D))):
         GG[i,j] = G[k]
         GG[j,i] = G[k]
