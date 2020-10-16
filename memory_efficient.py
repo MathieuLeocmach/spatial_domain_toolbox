@@ -5,6 +5,20 @@ from scipy.ndimage import correlate1d
 import time
 from numba import guvectorize
 
+def quadratic_basis(N):
+    """The order of the monomials in quadratic basis functions
+
+N: dimensionality
+
+---
+Returns
+
+basis: A (N,B) matrix where B is the number of polynomial basis functions.
+`basis[i,j]` is the order of the monomial along dimension i for basis function j.
+"""
+    basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+    return basis[:,basis.sum(0)<3]
+
 class CorrelationBand:
     """Iterator that yield plane by plane the correlation results of a signal by
     separable basis and applicability"""
@@ -304,8 +318,7 @@ class QuadraticToAbc:
         """N is the dimensionality of the signal"""
         self.N = N
         # generate a quadratic basis as inside function polyexp
-        basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
-        basis = basis[:,basis.sum(0)<3]
+        basis = quadratic_basis(N)
         self.index_c = 0
         self.indices_b = np.where(basis.sum(0)==1)[0][::-1]
         self.indices_A = np.where(basis.sum(0)==2)[0]
