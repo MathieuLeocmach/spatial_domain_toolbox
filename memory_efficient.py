@@ -75,7 +75,8 @@ dtype: Numerical type of the inner storage.
         """Generator that yields correlation results each hyperplane of the
 signal, for each basis function.
 
-signal: An array of shape `shape` (or `shape+(n_fields,)`). Must be real and nonsparse.
+signal: An iterable of hyperplanes of the signal (arrays of shape `shape[1:]`
+(or `shape[1:]+(n_fields,)`)), or an iterator over such an iterable.
 
 ---
 Yield: An hyperplane of the correlation results perpendicular to the slowest
@@ -83,10 +84,14 @@ varrying dimension (e.g. YX plane of a ZYX image) + a last dimension of size B
 that contains one coefficient per basis function, in the same order as the basis.
 """
         N = len(self.shape)
-        if self.n_fields is None:
-            assert signal.shape == self.shape
+        if np.iterable(signal):
+            it_signal = iter(signal)
         else:
-            assert signal.shape == self.shape + (self.n_fields,)
+            it_signal = signal
+        # if self.n_fields is None:
+        #     assert signal.shape == self.shape
+        # else:
+        #     assert signal.shape == self.shape + (self.n_fields,)
         thickness = len(self.applicability[0])
         halfth = thickness//2
 
@@ -105,7 +110,7 @@ that contains one coefficient per basis function, in the same order as the basis
             #t_hp = time.time()
             if z < self.shape[0]:
                 # Store the hyperplane in the band
-                self._res[(0,)*N][rollingZ] = signal[z]
+                self._res[(0,)*N][rollingZ] = next(it_signal)
 
                 # Perform correlation on all the dimensions of the hyperplane,
                 # fastest varrying dimension first
