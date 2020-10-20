@@ -477,7 +477,7 @@ at the time; and yield the displacement matrices.
 signal: An iterable of hyperplanes of the signal (arrays of shape `shape[1:]`),
 or an iterator over such an iterable.
 
-previous: An other CorrelationResult object sharing the same CorrelationBand 
+previous: An other CorrelationResult object sharing the same CorrelationBand
 object. It must have been either `previous.initialize` or
 `previous.generate_displacement_matrices`.
 
@@ -495,18 +495,18 @@ the first N-1 dimensions are the position in the hyperplane.
         if displz is None:
             displz = np.zeros((self.cb.shape[0], len(self.cb.shape)-1), np.int64)
         assert len(displz) == self.cb.shape[0]
-        qAbc = memory_efficient.QuadraticToAbc(len(self.cb.shape))
+        qAbc = QuadraticToAbc(len(self.cb.shape))
         for z, (res0, r, dz) in enumerate(zip(
             previous.results, self.cb.generator(signal), displz
         )):
             res1 = self.metric(r, z, self.cb..shape[0])
             self.results[z] = res1
-            A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(
+            A, Delta_b = prepare_displacement_matrices_homogeneous(
                 qAbc.A(res0), qAbc.b(res0),
                 qAbc.A(res1), qAbc.b(res1),
                 displacement=dz
             )
-            yield memory_efficient.A_Deltab2G_h(A, Delta_b)
+            yield A_Deltab2G_h(A, Delta_b)
 
 @guvectorize(['(float32[:], float32[:], float32[:])'], '(m),(n)->(n)', nopython=True, target='parallel')
 def Gh2displ(G, h, res):
