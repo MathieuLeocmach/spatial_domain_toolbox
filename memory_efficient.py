@@ -398,17 +398,21 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     #take care of the margins by repeating the last available element of A2 or b2
     for dim, d in enumerate(displ):
         if d >= 0:
-            A[(slice(None,None),)*dim + (slice(0,d),)] = A2[(slice(None,None),)*dim + (slice(0,1),)]
+            # Use only A1 where A2 is not available
+            A[(slice(None,None),)*dim + (slice(0,d),)] = A1[(slice(None,None),)*dim + (slice(0,d),)]
+            # Use the last availbale element of b2
             Delta_b[(slice(None,None),)*dim + (slice(0,d),)] = -b2[(slice(None,None),)*dim + (slice(0,1),)]
         else:
-            A[(slice(None,None),)*dim + (slice(-d,None),)] = A2[(slice(None,None),)*dim + (slice(-1,None),)]
+            # Use only A1 where A2 is not available
+            A[(slice(None,None),)*dim + (slice(-d,None),)] = A1[(slice(None,None),)*dim + (slice(-d,None),)]
+            # Use the last availbale element of b2
             Delta_b[(slice(None,None),)*dim + (slice(-d,None),)] = -0.5*b2[(slice(None,None),)*dim + (slice(-1,None),)]
     #Advected average for A1 and A2
     A += A1
     A *= 0.5
-    # Advected difference for b1 and b2, to which we add back the rounded
-    # a priori displacement. Here we have to expand the displacement vector to
-    # the same rank as the original signal dimension.
+    # Advected difference for b1 and b2, to which we add back the forward
+    # rounded a priori displacement. Here we have to expand the displacement
+    # vector to the same rank as the original signal dimension.
     df = np.zeros(A1.shape[-1], A1.dtype)
     df[-N:] = -displ#displacement
     Delta_b += 0.5*b1 + A @ df
