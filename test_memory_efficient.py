@@ -43,30 +43,30 @@ def test_single_square_fast():
     #b0
     b0 = qAbc.b(resultsSC)
     assert np.unravel_index(np.argmin(b0[...,0]), im0.shape) == (32,33)
-    assert np.unravel_index(np.argmax(b0[...,0]), im0.shape) == (30,33)
+    assert np.unravel_index(np.argmax(b0[...,0]), im0.shape) == (29,33)
     assert np.unravel_index(np.argmin(b0[...,1]), im0.shape) == (31,34)
     assert np.unravel_index(np.argmax(b0[...,1]), im0.shape) == (31,31)
     #A0 diagonal
     A0 = qAbc.A(resultsSC)
     assert np.unravel_index(np.argmin(A0[...,0,0]), im0.shape) in [(30,33), (32,33)]
-    #assert A0[30,33,0,0] == A0[32,33,0,0]
+    np.testing.assert_approx_equal(A0[30,33,0,0], A0[32,33,0,0], 6)
     assert np.unravel_index(np.argmax(A0[...,0,0]), im0.shape) in [(29,33), (33,33)]
-    #assert A0[29,33,0,0] == A0[33,33,0,0]
+    np.testing.assert_approx_equal(A0[29,33,0,0], A0[33,33,0,0], 6)
     assert np.unravel_index(np.argmin(A0[...,1,1]), im0.shape) in [(31,32), (31,34)]
-    #assert A0[31,32,1,1] == A0[31,34,1,1]
+    np.testing.assert_approx_equal(A0[31,32,1,1], A0[31,34,1,1], 6)
     assert np.unravel_index(np.argmax(A0[...,1,1]), im0.shape) in [(31,31), (31,35)]
-    #assert A0[31,31,1,1] == A0[31,35,1,1]
-    #assert A0[33,33,0,0] == A0[31,31,1,1]
-    #A0 nondiagonal
+    np.testing.assert_approx_equal(A0[31,31,1,1], A0[31,35,1,1], 6)
+    np.testing.assert_approx_equal(A0[33,33,0,0], A0[31,31,1,1], 6)
+    #A0 off diagonal
     assert np.all(A0[...,0,1] == A0[...,1,0])
     A001M = [(29,31), (29,32), (30,31), (30,32), (32,34), (32,35), (33, 34), (33,35)]
     assert np.unravel_index(np.argmax(A0[...,0,1]), im0.shape) in A001M
-    #for i,j in A001M[1:]:
-    #    assert A0[i,j,0,1] == A0[29,31,0,1]
+    for i,j in A001M[1:]:
+        assert A0[i,j,0,1] == A0[29,31,0,1]
     A001m = [(29,34), (29,35), (30,34), (30,35), (32,31), (32,32), (33, 31), (33,32)]
     assert np.unravel_index(np.argmin(A0[...,0,1]), im0.shape) in A001m
-    #for i,j in A001m[1:]:
-    #    assert A0[i,j,0,1] == A0[29,34,0,1]
+    for i,j in A001m[1:]:
+        assert A0[i,j,0,1] == A0[29,34,0,1]
 
     #Check normalized separable correlation give the same results here because
     #no signal close to the edge of the image
