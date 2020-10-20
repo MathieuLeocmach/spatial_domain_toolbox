@@ -453,6 +453,61 @@ the original signal.
         M[...,-D:] = h
     return M
 
+class CorrelationResult:
+    """A class to efficiently compute correlation results and generate displacement matrices."""
+    def __init__(self, cb, metric):
+        """cb: CorrelationBand instance.
+
+metric: metrics_SNC object.
+"""
+        self.results = np.empty(cb.shape+(cb.basis.shape[1],), cb.dtype)
+        self.cb = cb
+        self.metric = metric
+
+    def initialize(self, signal):
+        """Compute and store the correlation results of the signal, an hyperplane
+at the time. Useful only to initialize the time loop."""
+        for z, r in enumerate(self.cb.generator(signal)):
+            self.results[z] = self.metric(r, z, self.cb.shape[0])
+
+    def displacement_matrices_generator(self, signal, previous, displz=None):
+        """Compute and store the correlation results of the signal, an hyperplane
+at the time; and yield the displacement matrices.
+
+signal: An iterable of hyperplanes of the signal (arrays of shape `shape[1:]`),
+or an iterator over such an iterable.
+
+previous: An other CorrelationResult object sharing the same CorrelationBand 
+object. It must have been either `previous.initialize` or
+`previous.generate_displacement_matrices`.
+
+displz: A (shape[0],D-1) array, that contains the initial guess of homogeneous
+displacement in each hyperplane.
+
+----
+Yields
+
+Gh: The displacement matrices in each hyperplane. A (...,D*(D+3)/2) array, where
+the first N-1 dimensions are the position in the hyperplane.
+"""
+        assert previous != self
+        assert previous.cb == self.cb
+        if displz is None:
+            displz = np.zeros((self.cb.shape[0], len(self.cb.shape)-1), np.int64)
+        assert len(displz) == self.cb.shape[0]
+        qAbc = memory_efficient.QuadraticToAbc(len(self.cb.shape))
+        for z, (res0, r, dz) in enumerate(zip(
+            previous.results, self.cb.generator(signal), displz
+        )):
+            res1 = self.metric(r, z, self.cb..shape[0])
+            self.results[z] = res1
+            A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(
+                qAbc.A(res0), qAbc.b(res0),
+                qAbc.A(res1), qAbc.b(res1),
+                displacement=dz
+            )
+            yield memory_efficient.A_Deltab2G_h(A, Delta_b)
+
 @guvectorize(['(float32[:], float32[:], float32[:])'], '(m),(n)->(n)', nopython=True, target='parallel')
 def Gh2displ(G, h, res):
     """Compute the least square solution to Gx = h, with G a (D,D) symmetric
