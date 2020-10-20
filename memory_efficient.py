@@ -179,11 +179,7 @@ that contains one coefficient per basis function, in the same order as the basis
                     prior[0] = 0
                     prior = tuple(prior.tolist())
                     kernel = (app * X**index[0]).reshape(self.X[0].shape).astype(self.dtype)
-                    if z>24 and z<39:
-                        print('%d\t%d\t%s\t%s'%(z, z-halfth, kernel.ravel(), self._res[prior][:,33]), end='')
                     out[...,b] = np.sum(self._res[prior] * kernel, axis=0)
-                    if z>24 and z<39:
-                        print('\t%g'%(out[...,33,b]))
                 #t_out += time.time() - t_o
                 yield out
         #print("Time to convolve hyperplanes: %g ms"%(1e3*t_hyperplane))
