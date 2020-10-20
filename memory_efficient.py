@@ -499,7 +499,7 @@ the first N-1 dimensions are the position in the hyperplane.
         for z, (res0, r, dz) in enumerate(zip(
             previous.results, self.cb.generator(signal), displz
         )):
-            res1 = self.metric(r, z, self.cb..shape[0])
+            res1 = self.metric(r, z, self.cb.shape[0])
             self.results[z] = res1
             A, Delta_b = prepare_displacement_matrices_homogeneous(
                 qAbc.A(res0), qAbc.b(res0),
