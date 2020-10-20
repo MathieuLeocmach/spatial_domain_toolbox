@@ -161,7 +161,7 @@ that contains one coefficient per basis function, in the same order as the basis
                 for value in self._res.values():
                     value[rollingZ] = 0
             #t_hyperplane += time.time() - t_hp
-            if z >= halfth+1 and z-halfth-1<self.shape[0]:
+            if z >= halfth and z-halfth<self.shape[0]:
                 #t_o = time.time()
                 # Prepare output
                 if self.n_fields is None:
@@ -169,7 +169,7 @@ that contains one coefficient per basis function, in the same order as the basis
                 else:
                     out = np.zeros(self.shape[1:] + (self.n_fields,) + self.basis.shape[1:], dtype=self.dtype)
                 #roll monomial and applicability to be in phase with the current plane
-                rollshift = rollingZ-thickness
+                rollshift = z+1
                 X = np.ascontiguousarray(np.roll(self.X[0].ravel(), rollshift))
                 app = np.ascontiguousarray(np.roll(self.applicability[0].ravel(), rollshift))
                 # Perform correlation in the slowest varrying dimension (along the
@@ -179,7 +179,11 @@ that contains one coefficient per basis function, in the same order as the basis
                     prior[0] = 0
                     prior = tuple(prior.tolist())
                     kernel = (app * X**index[0]).reshape(self.X[0].shape).astype(self.dtype)
+                    if z>24 and z<39:
+                        print('%d\t%d\t%s\t%s'%(z, z-halfth, kernel.ravel(), self._res[prior][:,33]), end='')
                     out[...,b] = np.sum(self._res[prior] * kernel, axis=0)
+                    if z>24 and z<39:
+                        print('\t%g'%(out[...,33,b]))
                 #t_out += time.time() - t_o
                 yield out
         #print("Time to convolve hyperplanes: %g ms"%(1e3*t_hyperplane))
