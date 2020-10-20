@@ -369,7 +369,7 @@ is a N+1 dimensional array. Such arrays can be obtained via QuadraticToAbc.
 
 A2,b2: Local polynomial expension coefficients at time 2.
 
-displacement: The global translation vector.
+displacement: The global translation vector from time 1 to time 2.
 
 ----
 Returns
@@ -390,9 +390,9 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     if displacement is None:
         displacement = np.zeros(N, dtype=A1.dtype)
     assert displacement.shape == (N,)
-    # Integral part of the displacement vector
-    displ = np.floor(0.5 + displacement).astype(np.int64)
-    # Advect A2 and b2 by rolling
+    # Integral part of the backward displacement vector
+    displ = -np.floor(0.5 + displacement).astype(np.int64)
+    # Advect back A2 and b2 by rolling
     A = np.roll(A2, displ, axis=tuple(range(N)))
     Delta_b = -0.5*np.roll(b2, displ, axis=tuple(range(N)))
     #take care of the margins by repeating the last available element of A2 or b2
@@ -406,10 +406,11 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     #Advected average for A1 and A2
     A += A1
     A *= 0.5
-    # Advected difference for b1 and b2. Here we have to consider the full
-    # displacement vector, real-valued and same rank as the original signal dimension.
+    # Advected difference for b1 and b2, to which we add back the rounded
+    # a priori displacement. Here we have to expand the displacement vector to
+    # the same rank as the original signal dimension.
     df = np.zeros(A1.shape[-1], A1.dtype)
-    df[-N:] = displacement
+    df[-N:] = -displ#displacement
     Delta_b += 0.5*b1 + A @ df
     return A, Delta_b
 
