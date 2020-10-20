@@ -110,6 +110,18 @@ def test_single_square_fast():
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
     assert int(displ[31,33,0]) == 1
     assert int(displ[31,33,1]) == 0
+    #initial guess of the displacement
+    d0 = np.array([1,0])
+    A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
+    assert np.all(A == A0)
+    #np.testing.assert_almost_equal(Delta_b, A @ d0, 0)
+    M = memory_efficient.A_Deltab2G_h(A, Delta_b)
+    Gh = np.empty_like(M)
+    for z, m in enumerate(cb2.generator(M)):
+        Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
+    displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
+    assert int(displ[31,33,0]) == 1
+    assert int(displ[31,33,1]) == 0
 
     #shift by one pixel on axis 1
     im1 = np.zeros((64,64))
@@ -126,6 +138,18 @@ def test_single_square_fast():
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
+    M = memory_efficient.A_Deltab2G_h(A, Delta_b)
+    Gh = np.empty_like(M)
+    for z, m in enumerate(cb2.generator(M)):
+        Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
+    displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
+    assert int(displ[31,33,0]) == 0
+    assert int(displ[31,33,1]) == 1
+    #initial guess of the displacement
+    d0 = np.array([0,1])
+    A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
+    assert np.all(A == A0)
+    #np.testing.assert_almost_equal(Delta_b, A @ d0, 0)
     M = memory_efficient.A_Deltab2G_h(A, Delta_b)
     Gh = np.empty_like(M)
     for z, m in enumerate(cb2.generator(M)):
