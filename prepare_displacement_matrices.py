@@ -21,7 +21,7 @@ is a N+1 dimensional array. Such arrays can be obtained via `make_Abc_fast`
 
 A2,b2: Local polynomial expension coefficients at time 2.
 
-displacement: Initial guess of the displacement field.
+displacement: Initial guess of the displacement field from time 1 to time 2.
 
 ----
 Returns
@@ -47,11 +47,10 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     Delta_b = np.zeros(b1.shape, dtype=A1.dtype)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for index in np.ndindex(shape):
-        #displacement is given fast index first, so we revert
-        #we also take the opposite in order to be able to bring next image
-        #on previous image
+        # We take the opposite of the displacement in order to be able to bring
+        # A2 and b2 on A1 and b1
+        d = -np.floor(0.5 + displacement[index]).astype(np.int64)
         #truncate the rounded displacement so that no pixel goes out
-        d = np.floor(0.5 + displacement[index]).astype(np.int64)
         for dim in range(N):
             if index[dim] + d[dim] <0:
                 d[dim] = -index[dim]
@@ -64,7 +63,8 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
 
         # advected average of the two A matrices (Eq. 7.32)
         A[index] = (A1[index] + A22[index2]) / 2
-        # advected difference of the two vectors b (Eq. 7.33)
-        df = d.astype(A.dtype)
+        # advected difference of the two vectors b, to which we add back the
+        # forward rounded a priori displacement.(Eq. 7.33)
+        df = -d.astype(A.dtype)
         Delta_b[index] = -0.5*(b22[index2] - b1[index]) + A[index] @ df
     return  A, Delta_b
