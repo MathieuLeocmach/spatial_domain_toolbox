@@ -312,7 +312,7 @@ index of the current plane.
             if Ginv.shape[dim] < corres.shape[dim]:
                 half = Ginv.shape[dim]//2
                 n_repeat = np.ones(Ginv.shape[dim], np.int64)
-                n_repeat[half+1] = corres.shape[dim] - 2*half
+                n_repeat[half] = corres.shape[dim] - 2*half
                 Ginv = np.repeat(Ginv, n_repeat, axis=dim)
         if n_fields is not None:
             Ginv = Ginv[...,None,:,:]
