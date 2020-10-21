@@ -278,6 +278,16 @@ class metrics_SNC:
                 Ginv[l] = np.linalg.pinv(G, hermitian=True)
             self.Ginvs[z] = Ginv.reshape(self.Ginvs.shape[1:])
 
+
+    def expand_Ginv(self, Ginv, shape):
+        for dim in range(Ginv.ndim-2):
+            if Ginv.shape[dim] < shape[dim]:
+                half = Ginv.shape[dim]//2
+                n_repeat = np.ones(Ginv.shape[dim], np.int64)
+                n_repeat[half] = shape[dim] - 2*half
+                Ginv = np.repeat(Ginv, n_repeat, axis=dim)
+        return Ginv
+
     def __call__(self, corres, z=None, zlen=None, n_fields=None):
         """Normalize correlation results by the metric.
 
@@ -300,20 +310,18 @@ index of the current plane.
                 if z < half:
                     Ginv = self.Ginvs[z]
                 elif z+half < zlen:
-                    Ginv = self.Ginvs[half]
+                    if not hasattr(self, '_medium_plane') or self._medium_plane.shape[:-2] != corres.shape[:self._medium_plane.ndim-2]:
+                        self._medium_plane = self.expand_Ginv(self.Ginvs[half], corres.shape)
+                    Ginv = self._medium_plane
                 else:
                     Ginv = self.Ginvs[z-zlen]
+
             else:
                 # Certainty was not None, the inverse metric is straightforward
                 Ginv = self.Ginvs[z]
 
         #expand the inverse metrics if needed (certainty was None)
-        for dim in range(Ginv.ndim-2):
-            if Ginv.shape[dim] < corres.shape[dim]:
-                half = Ginv.shape[dim]//2
-                n_repeat = np.ones(Ginv.shape[dim], np.int64)
-                n_repeat[half] = corres.shape[dim] - 2*half
-                Ginv = np.repeat(Ginv, n_repeat, axis=dim)
+        Ginv = self.expand_Ginv(Ginv, corres.shape)
         if n_fields is not None:
             Ginv = Ginv[...,None,:,:]
         return (Ginv @ corres[...,None]).reshape(corres.shape)
