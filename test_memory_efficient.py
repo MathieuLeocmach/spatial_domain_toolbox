@@ -74,7 +74,7 @@ def test_single_square_fast():
     results = np.empty(im0.shape+(basis.shape[1],), np.float32)
     for z, r in enumerate(cb.generator(im0)):
         results[z] = mSNC(r, z, im0.shape[0])
-    np.testing.assert_almost_equal(results, resultsSC, 1)
+    np.testing.assert_almost_equal(results, resultsSC, 6)
 
 
     #identical images should not detect displacement
