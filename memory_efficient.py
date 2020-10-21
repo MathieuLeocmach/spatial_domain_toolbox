@@ -88,7 +88,7 @@ dtype: Numerical type of the inner storage.
                     continue
                 last_index = index
                 indextuple = tuple(index.tolist())
-                self._res[indextuple] = np.zeros(bandshape, dtype)
+                self._res[indextuple] = np.empty(bandshape, dtype)
         #print("time for memory allocation: %g ms"%(1e3*(time.time()-t_alloc)))
 
 
@@ -165,9 +165,9 @@ that contains one coefficient per basis function, in the same order as the basis
                 #t_o = time.time()
                 # Prepare output
                 if self.n_fields is None:
-                    out = np.zeros(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
+                    out = np.empty(self.shape[1:] + self.basis.shape[1:], dtype=self.dtype)
                 else:
-                    out = np.zeros(self.shape[1:] + (self.n_fields,) + self.basis.shape[1:], dtype=self.dtype)
+                    out = np.empty(self.shape[1:] + (self.n_fields,) + self.basis.shape[1:], dtype=self.dtype)
                 #roll monomial and applicability to be in phase with the current plane
                 rollshift = z+1
                 X = np.ascontiguousarray(np.roll(self.X[0].ravel(), rollshift))
@@ -224,7 +224,7 @@ of its dimensions)
     """
     N,M = basis.shape
     X = monomials(full_applicability)
-    B = np.zeros((np.prod(full_applicability.shape), M))
+    B = np.empty((np.prod(full_applicability.shape), M))
     for j in range(M):
         b = np.ones(full_applicability.shape)
         for k in range(N):
@@ -255,7 +255,7 @@ class metrics_SNC:
         mask = np.ones(basis_c.shape[1], np.bool)
         mask[1:] = np.any(np.diff(basis_c, axis=1)!=0, axis=0)
         basis_c = basis_c[:,mask]
-        self.ij2k = np.zeros((M,M), np.int64)
+        self.ij2k = np.empty((M,M), np.int64)
         for i in range(M):
             for j in range(M):
                 self.ij2k[i,j] = np.where(np.all(basis_c.T == basis[:,i]+basis[:,j], axis=1))[0]
@@ -266,12 +266,12 @@ class metrics_SNC:
         else:
             shape = certainty.shape
         cb_c = CorrelationBand(shape, applicability, basis_c, dtype=dtype)
-        self.Ginvs = np.zeros(shape+(M,M), dtype=dtype)
+        self.Ginvs = np.empty(shape+(M,M), dtype=dtype)
         for z,r_c in enumerate(cb_c.generator(certainty)):
             r_c_ = r_c.reshape((np.prod(r_c.shape[:-1]), r_c.shape[-1]))
-            Ginv = np.zeros((r_c_.shape[0],M,M), dtype=dtype)
+            Ginv = np.empty((r_c_.shape[0],M,M), dtype=dtype)
             for l in range(r_c_.shape[0]):
-                G = np.zeros((M,M))
+                G = np.empty((M,M))
                 for i in range(M):
                     for j in range(M):
                         G[i,j] = r_c_[l, self.ij2k[i,j]]
@@ -347,7 +347,7 @@ hyperplane."""
 basis. It can be either the total (N+1)-dimensional array, or a N-dimensional
 hyperplane."""
         N = self.N
-        A = np.zeros(r.shape[:-1]+(N,N), dtype=r.dtype)
+        A = np.empty(r.shape[:-1]+(N,N), dtype=r.dtype)
         for i,j, k in zip(*np.triu_indices(N), self.indices_A):
             if i==j:
                 A[...,N-1-i,N-1-j] = r[...,k]
@@ -443,7 +443,7 @@ the original signal.
     assert Delta_b.shape[-1] == D
     assert Delta_b.shape[:-1] == shape
 
-    M = np.zeros(shape+(D*(D+3)//2,), A.dtype)
+    M = np.empty(shape+(D*(D+3)//2,), A.dtype)
     #A.T * A, but A is symmetric
     G = A @ A
     #A.T * Delta_b, but A is symmetric
