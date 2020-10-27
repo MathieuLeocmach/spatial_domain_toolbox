@@ -190,3 +190,29 @@ def test_1px_1():
     assert np.rint(displ[30,31,33,0]) == 0
     assert np.rint(displ[30,31,33,1]) == 1
     assert np.rint(displ[30,31,33,2]) == 0
+
+def test_Large_Separable_Correlation():
+    """Separable correlation on larger array"""
+    im3 = np.zeros((512,512,100), np.float32)
+    im3[29:32, 30:33, 32:35] = 1
+
+    cb3 = memory_efficient.CorrelationBand(im3.shape, applicability, basis)
+    resultsSC3 = np.zeros(im3.shape+(basis.shape[1],), np.float32)
+    for z, r in enumerate(cb3.generator(im3)):
+        resultsSC3[z] = mSC(r)
+
+    #c0
+    c0 = qAbc.c(resultsSC3[30])
+    assert np.unravel_index(np.argmax(c0), im3.shape[1:]) == (31,33)
+    #b0
+    b0 = qAbc.b(resultsSC3[30])
+    np.testing.assert_almost_equal(b0[...,1].min(), b0[32,33,1])
+    np.testing.assert_almost_equal(b0[...,1].max(), b0[29,33,1])
+    np.testing.assert_almost_equal(b0[...,2].min(), b0[31,34,2])
+    np.testing.assert_almost_equal(b0[...,2].max(), b0[31,31,2])
+    #A0 diagonal
+    A0 = qAbc.A(resultsSC3[30])
+    np.testing.assert_almost_equal(A0[...,2,2].min(), A0[31,32,2,2])
+    np.testing.assert_almost_equal(A0[...,2,2].max(), A0[31,31,2,2])
+    #A0 off diagonal
+    assert np.all(A0[...,0,1] == A0[...,1,0])
