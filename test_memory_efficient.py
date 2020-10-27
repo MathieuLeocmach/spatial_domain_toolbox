@@ -1,11 +1,11 @@
-from nose.tools import with_setup
+from nose.tools import eq_
 import numpy as np
 import itertools
 import memory_efficient
 
 
-im0 = np.zeros((64,64))
-im0[30:33, 32:35] = 1
+im0 = np.zeros((64,64,64))
+im0[29:32, 30:33, 32:35] = 1
 
 spatial_size = 5
 n = int((spatial_size - 1) // 2)
@@ -42,34 +42,26 @@ def test_Separable_Correlation():
 
     #c0
     c0 = qAbc.c(resultsSC)
-    assert np.unravel_index(np.argmax(c0), im0.shape) == (31,33)
+    assert np.unravel_index(np.argmax(c0), im0.shape) == (30,31,33)
     #b0
     b0 = qAbc.b(resultsSC)
-    assert np.unravel_index(np.argmin(b0[...,0]), im0.shape) == (32,33)
-    assert np.unravel_index(np.argmax(b0[...,0]), im0.shape) == (29,33)
-    assert np.unravel_index(np.argmin(b0[...,1]), im0.shape) == (31,34)
-    assert np.unravel_index(np.argmax(b0[...,1]), im0.shape) == (31,31)
+    np.testing.assert_almost_equal(b0[...,0].min(), b0[32,31,33,0])
+    np.testing.assert_almost_equal(b0[...,0].max(), b0[29,31,33,0])
+    np.testing.assert_almost_equal(b0[...,1].min(), b0[30,32,33,1])
+    np.testing.assert_almost_equal(b0[...,1].max(), b0[30,29,33,1])
+    np.testing.assert_almost_equal(b0[...,2].min(), b0[30,31,34,2])
+    np.testing.assert_almost_equal(b0[...,2].max(), b0[30,31,31,2])
     #A0 diagonal
     A0 = qAbc.A(resultsSC)
-    assert np.unravel_index(np.argmin(A0[...,0,0]), im0.shape) in [(30,33), (32,33)]
-    np.testing.assert_approx_equal(A0[30,33,0,0], A0[32,33,0,0], 6)
-    assert np.unravel_index(np.argmax(A0[...,0,0]), im0.shape) in [(29,33), (33,33)]
-    np.testing.assert_approx_equal(A0[29,33,0,0], A0[33,33,0,0], 6)
-    assert np.unravel_index(np.argmin(A0[...,1,1]), im0.shape) in [(31,32), (31,34)]
-    np.testing.assert_approx_equal(A0[31,32,1,1], A0[31,34,1,1], 6)
-    assert np.unravel_index(np.argmax(A0[...,1,1]), im0.shape) in [(31,31), (31,35)]
-    np.testing.assert_approx_equal(A0[31,31,1,1], A0[31,35,1,1], 6)
-    np.testing.assert_approx_equal(A0[33,33,0,0], A0[31,31,1,1], 6)
+    np.testing.assert_almost_equal(A0[...,0,0].min(), A0[29,31,33,0,0])
+    np.testing.assert_almost_equal(A0[...,0,0].max(), A0[32,31,33,0,0])
+    np.testing.assert_almost_equal(A0[...,1,1].min(), A0[31,31,31,1,1])
+    np.testing.assert_almost_equal(A0[...,1,1].max(), A0[31,31,34,1,1])
+    np.testing.assert_almost_equal(A0[...,2,2].min(), A0[30,31,32,2,2])
+    np.testing.assert_almost_equal(A0[...,2,2].max(), A0[30,31,31,2,2])
     #A0 off diagonal
     assert np.all(A0[...,0,1] == A0[...,1,0])
-    A001M = [(29,31), (29,32), (30,31), (30,32), (32,34), (32,35), (33, 34), (33,35)]
-    assert np.unravel_index(np.argmax(A0[...,0,1]), im0.shape) in A001M
-    for i,j in A001M[1:]:
-        assert A0[i,j,0,1] == A0[29,31,0,1]
-    A001m = [(29,34), (29,35), (30,34), (30,35), (32,31), (32,32), (33, 31), (33,32)]
-    assert np.unravel_index(np.argmin(A0[...,0,1]), im0.shape) in A001m
-    for i,j in A001m[1:]:
-        assert A0[i,j,0,1] == A0[29,34,0,1]
+
 
 
 def test_Normalized_Separable_Correlation():
@@ -116,16 +108,16 @@ def test_1px_0():
     b0 = qAbc.b(resultsSC)
     c0 = qAbc.c(resultsSC)
     #shift by one pixel on axis 0
-    im1 = np.zeros((64,64))
-    im1[31:34, 32:35] = 1
+    im1 = np.zeros((64,64,64))
+    im1[30:33, 30:33, 32:35] = 1
     for z, r in enumerate(cb.generator(im1)):
         resultsSC[z] = mSC(r)
     A1 = qAbc.A(resultsSC)
-    assert np.all(A1[1:] == A0[:-1])
+    np.testing.assert_array_almost_equal(A1[1:], A0[:-1])
     b1 = qAbc.b(resultsSC)
-    assert np.all(b1[1:] == b0[:-1])
+    np.testing.assert_array_almost_equal(b1[1:], b0[:-1])
     c1 = qAbc.c(resultsSC)
-    assert np.all(c1[1:] == c0[:-1])
+    np.testing.assert_array_almost_equal(c1[1:], c0[:-1])
     # no initial guess of the displacement
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
@@ -135,10 +127,11 @@ def test_1px_0():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert int(displ[31,33,0]) == 1
-    assert int(displ[31,33,1]) == 0
+    assert np.rint(displ[30,31,33,0]) == 1
+    assert np.rint(displ[30,31,33,1]) == 0
+    assert np.rint(displ[30,31,33,2]) == 0
     #initial guess of the displacement
-    d0 = np.array([1,0])
+    d0 = np.array([1,0,0])
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
     assert np.all(A == A0)
     #np.testing.assert_almost_equal(Delta_b, A @ d0, 0)
@@ -147,8 +140,9 @@ def test_1px_0():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert int(displ[31,33,0]) == 1
-    assert int(displ[31,33,1]) == 0
+    assert np.rint(displ[30,31,33,0]) == 1
+    assert np.rint(displ[30,31,33,1]) == 0
+    assert np.rint(displ[30,31,33,2]) == 0
 
 
 def test_1px_1():
@@ -161,16 +155,16 @@ def test_1px_1():
     b0 = qAbc.b(resultsSC)
     c0 = qAbc.c(resultsSC)
     #shift by one pixel on axis 1
-    im1 = np.zeros((64,64))
-    im1[30:33, 33:36] = 1
+    im1 = np.zeros((64,64,64))
+    im1[29:32, 31:34, 32:35] = 1
     for z, r in enumerate(cb.generator(im1)):
         resultsSC[z] = mSC(r)
     A1 = qAbc.A(resultsSC)
-    assert np.all(A1[:,1:] == A0[:,:-1])
+    np.testing.assert_array_almost_equal(A1[:,1:], A0[:,:-1])
     b1 = qAbc.b(resultsSC)
-    assert np.all(b1[:,1:] == b0[:,:-1])
+    np.testing.assert_array_almost_equal(b1[:,1:], b0[:,:-1])
     c1 = qAbc.c(resultsSC)
-    assert np.all(c1[:,1:] == c0[:,:-1])
+    np.testing.assert_array_almost_equal(c1[:,1:], c0[:,:-1])
     # no initial guess of the displacement
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
@@ -180,10 +174,11 @@ def test_1px_1():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert int(displ[31,33,0]) == 0
-    assert int(displ[31,33,1]) == 1
+    assert np.rint(displ[30,31,33,0]) == 0
+    assert np.rint(displ[30,31,33,1]) == 1
+    assert np.rint(displ[30,31,33,2]) == 0
     #initial guess of the displacement
-    d0 = np.array([0,1])
+    d0 = np.array([0,1,0])
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
     assert np.all(A == A0)
     #np.testing.assert_almost_equal(Delta_b, A @ d0, 0)
@@ -192,5 +187,6 @@ def test_1px_1():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert int(displ[31,33,0]) == 0
-    assert int(displ[31,33,1]) == 1
+    assert np.rint(displ[30,31,33,0]) == 0
+    assert np.rint(displ[30,31,33,1]) == 1
+    assert np.rint(displ[30,31,33,2]) == 0
