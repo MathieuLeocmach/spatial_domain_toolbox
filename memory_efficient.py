@@ -179,7 +179,9 @@ that contains one coefficient per basis function, in the same order as the basis
                     prior[0] = 0
                     prior = tuple(prior.tolist())
                     kernel = (app * X**index[0]).reshape(self.X[0].shape).astype(self.dtype)
-                    out[...,b] = np.sum(self._res[prior] * kernel, axis=0)
+                    #kernel = (app * X**index[0]).astype(self.dtype)
+                    out[...,b] = (self._res[prior] * kernel).sum(axis=0)
+                    #out[...,b] = np.dot(np.moveaxis(self._res[prior], 0, -1), kernel)
                 #t_out += time.time() - t_o
                 yield out
         #print("Time to convolve hyperplanes: %g ms"%(1e3*t_hyperplane))
