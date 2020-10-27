@@ -1,38 +1,41 @@
+from nose.tools import with_setup
 import numpy as np
 import itertools
-import pytest
 import memory_efficient
 
-def test_single_square_fast():
-    """move a single square by 1 pixel"""
-    im0 = np.zeros((64,64))
-    im0[30:33, 32:35] = 1
 
-    spatial_size = 5
-    n = int((spatial_size - 1) // 2)
-    sigma = 0.15 * (spatial_size - 1)
-    N = im0.ndim
-    basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
-    basis = basis[:,basis.sum(0)<3]
-    qAbc = memory_efficient.QuadraticToAbc(N)
+im0 = np.zeros((64,64))
+im0[30:33, 32:35] = 1
 
-    a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
-    applicability = [a for dim in range(N)]
-    cb = memory_efficient.CorrelationBand(im0.shape, applicability, basis)
+spatial_size = 5
+n = int((spatial_size - 1) // 2)
+sigma = 0.15 * (spatial_size - 1)
+N = im0.ndim
+basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
+basis = basis[:,basis.sum(0)<3]
+qAbc = memory_efficient.QuadraticToAbc(N)
 
-    spatial_size2 = 15
-    n2 = int((spatial_size2 - 1) // 2)
-    sigma2 = 0.15 * (spatial_size2 - 1)
-    basis2 = np.zeros((N,1), np.int64)
+a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
+applicability = [a for dim in range(N)]
+cb = memory_efficient.CorrelationBand(im0.shape, applicability, basis)
 
-    a2 = np.exp(-np.arange(-n2, n2+1)**2/(2*sigma2**2))
-    applicability2 = [a2 for dim in range(N)]
+spatial_size2 = 15
+n2 = int((spatial_size2 - 1) // 2)
+sigma2 = 0.15 * (spatial_size2 - 1)
+basis2 = np.zeros((N,1), np.int64)
 
-    cb2 = memory_efficient.CorrelationBand(im0.shape, applicability2, basis2, n_fields=N*(N+3)//2)
-    mSNC2 = memory_efficient.metrics_SNC(applicability2, basis2)
+a2 = np.exp(-np.arange(-n2, n2+1)**2/(2*sigma2**2))
+applicability2 = [a2 for dim in range(N)]
 
-    #Separable correlation
-    mSC = memory_efficient.metrics_SC(applicability, basis)
+cb2 = memory_efficient.CorrelationBand(im0.shape, applicability2, basis2, n_fields=N*(N+3)//2)
+mSNC2 = memory_efficient.metrics_SNC(applicability2, basis2)
+
+#Separable correlation
+mSC = memory_efficient.metrics_SC(applicability, basis)
+
+
+def test_Separable_Correlation():
+    """Separable correlation on known values"""
     resultsSC = np.zeros(im0.shape+(basis.shape[1],), np.float32)
     for z, r in enumerate(cb.generator(im0)):
         resultsSC[z] = mSC(r)
@@ -68,6 +71,12 @@ def test_single_square_fast():
     for i,j in A001m[1:]:
         assert A0[i,j,0,1] == A0[29,34,0,1]
 
+
+def test_Normalized_Separable_Correlation():
+    """Check normalized separable correlation give the same results as separable correlation far from the edges"""
+    resultsSC = np.zeros(im0.shape+(basis.shape[1],), np.float32)
+    for z, r in enumerate(cb.generator(im0)):
+        resultsSC[z] = mSC(r)
     #Check normalized separable correlation give the same results here because
     #no signal close to the edge of the image
     mSNC = memory_efficient.metrics_SNC(applicability, basis)
@@ -77,6 +86,14 @@ def test_single_square_fast():
     np.testing.assert_almost_equal(results, resultsSC, 6)
 
 
+def test_no_displacement():
+    """identical images should not detect displacement"""
+    resultsSC = np.zeros(im0.shape+(basis.shape[1],), np.float32)
+    for z, r in enumerate(cb.generator(im0)):
+        resultsSC[z] = mSC(r)
+
+    A0 = qAbc.A(resultsSC)
+    b0 = qAbc.b(resultsSC)
     #identical images should not detect displacement
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A0, b0)
     assert np.all(A==A0)
@@ -88,6 +105,16 @@ def test_single_square_fast():
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
     assert np.all(displ == 0)
 
+
+def test_1px_0():
+    """shift by one pixel on axis 0"""
+    resultsSC = np.zeros(im0.shape+(basis.shape[1],), np.float32)
+    for z, r in enumerate(cb.generator(im0)):
+        resultsSC[z] = mSC(r)
+
+    A0 = qAbc.A(resultsSC)
+    b0 = qAbc.b(resultsSC)
+    c0 = qAbc.c(resultsSC)
     #shift by one pixel on axis 0
     im1 = np.zeros((64,64))
     im1[31:34, 32:35] = 1
@@ -123,6 +150,16 @@ def test_single_square_fast():
     assert int(displ[31,33,0]) == 1
     assert int(displ[31,33,1]) == 0
 
+
+def test_1px_1():
+    """shift by one pixel on axis 1"""
+    resultsSC = np.zeros(im0.shape+(basis.shape[1],), np.float32)
+    for z, r in enumerate(cb.generator(im0)):
+        resultsSC[z] = mSC(r)
+
+    A0 = qAbc.A(resultsSC)
+    b0 = qAbc.b(resultsSC)
+    c0 = qAbc.c(resultsSC)
     #shift by one pixel on axis 1
     im1 = np.zeros((64,64))
     im1[30:33, 33:36] = 1
