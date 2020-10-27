@@ -8,24 +8,17 @@ im0 = np.zeros((64,64,64))
 im0[29:32, 30:33, 32:35] = 1
 
 spatial_size = 5
-n = int((spatial_size - 1) // 2)
-sigma = 0.15 * (spatial_size - 1)
 N = im0.ndim
-basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
-basis = basis[:,basis.sum(0)<3]
 qAbc = memory_efficient.QuadraticToAbc(N)
+basis = qAbc.basis
 
-a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
-applicability = [a for dim in range(N)]
+
+applicability = memory_efficient.gaussian_applicability(spatial_size, N)
 cb = memory_efficient.CorrelationBand(im0.shape, applicability, basis)
 
 spatial_size2 = 15
-n2 = int((spatial_size2 - 1) // 2)
-sigma2 = 0.15 * (spatial_size2 - 1)
 basis2 = np.zeros((N,1), np.int64)
-
-a2 = np.exp(-np.arange(-n2, n2+1)**2/(2*sigma2**2))
-applicability2 = [a2 for dim in range(N)]
+applicability2 = memory_efficient.gaussian_applicability(spatial_size2, N)
 
 cb2 = memory_efficient.CorrelationBand(im0.shape, applicability2, basis2, n_fields=N*(N+3)//2)
 mSNC2 = memory_efficient.metrics_SNC(applicability2, basis2)
