@@ -19,11 +19,11 @@ basis: A (N,B) matrix where B is the number of polynomial basis functions.
     basis = np.vstack(list(itertools.product([0, 1, 2], repeat=N))).T
     return basis[:,basis.sum(0)<3]
 
-def gaussian_applicability(spatial_size, N):
+def gaussian_applicability(spatial_size, N, dtype=np.float32):
     """Gaussian applicability in each dimension"""
     n = int((spatial_size - 1) // 2)
     sigma = 0.15 * (spatial_size - 1)
-    a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2))
+    a = np.exp(-np.arange(-n, n+1)**2/(2*sigma**2)).astype(dtype)
     return [a for dim in range(N)]
 
 class CorrelationBand:
