@@ -335,10 +335,10 @@ class QuadraticToAbc:
         """N is the dimensionality of the signal"""
         self.N = N
         # generate a quadratic basis as inside function polyexp
-        basis = quadratic_basis(N)
+        self.basis = quadratic_basis(N)
         self.index_c = 0
-        self.indices_b = np.where(basis.sum(0)==1)[0][::-1]
-        self.indices_A = np.where(basis.sum(0)==2)[0]
+        self.indices_b = np.where(self.basis.sum(0)==1)[0][::-1]
+        self.indices_A = np.where(self.basis.sum(0)==2)[0]
 
     def c(self, r):
         """r is the result of metric-normalised correlations with the quadratic
