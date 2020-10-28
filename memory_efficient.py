@@ -57,7 +57,7 @@ dtype: Numerical type of the inner storage.
         if n_fields is not None:
             self.X = [X[...,None] for X in self.X]
 
-        self.prepare_hyperplane_operations()
+        self._prepare_hyperplane_operations()
 
         # Prepare storage
         self._res = dict()
@@ -76,13 +76,26 @@ dtype: Numerical type of the inner storage.
                 self._res[dest] = np.empty(bandshape, dtype)
 
 
-    def prepare_hyperplane_operations(self):
-        # The order in which correlations are performed is crucial
-        # We want to perform each calculation only once, and store in memory
-        # just what is needed. Therefore, for each dimension, we perform
-        # correlation with monomials by descending order. In particular, the
-        # zeroth order monomial is correlated last in order not to alter the
-        # input of correlation for higher order monomials.
+    def _prepare_hyperplane_operations(self):
+        """Initialize the list of hyperplane correlations.
+
+The order in which correlations are performed is crucial
+We want to perform each calculation only once, and store in memory
+just what is needed. Therefore, for each dimension, we perform
+correlation with monomials by descending order. In particular, the
+zeroth order monomial is correlated last in order not to alter the
+input of correlation for higher order monomials.
+
+Internally, each operation is a dictionary having the following keys:
+
+origin, destination: N-tuples indexing respectvely the input and output of the
+correlation.
+
+axis: the axis of the hyperplane on which to perform the correlation. Add 1 to
+get the axis of the original signal.
+
+kernel: a 1D correlation kernel that depends on both basis and applicability.
+        """
         self.sorted_basis = self.basis[::-1,np.lexsort(self.basis)][::-1,::-1]
         # Example for 2D quadratic base:
         # 0 1 0 2 1 0
@@ -107,6 +120,16 @@ dtype: Numerical type of the inner storage.
                     "axis": dim-1, #because hyperplane as one dimension less
                     "kernel": (self.applicability[dim] * self.X[dim].ravel()**e).astype(self.dtype)
                 })
+
+    def _perform_an_hyperplane_correlation(self, rollingZ, origin, destination, axis, kernel):
+        """Perform a correlation of the internally stored hyperplane `rollingZ`.
+See `prepare_hyperplane_operations` for the meaning of the parameters."""
+        correlate1d(
+            self._res[origin][rollingZ],
+            kernel,
+            axis = axis,
+            output = self._res[destination][rollingZ],
+            mode='constant')
 
 
     def generator(self, signal):
@@ -153,12 +176,7 @@ that contains one coefficient per basis function, in the same order as the basis
                 # Perform correlation on all the dimensions of the hyperplane,
                 # fastest varrying dimension first
                 for operation in self.planeops:
-                    correlate1d(
-                        self._res[operation["origin"]][rollingZ],
-                        operation["kernel"],
-                        axis = operation["axis"],
-                        output = self._res[operation["destination"]][rollingZ],
-                        mode='constant')
+                    self._perform_an_hyperplane_correlation(rollingZ, **operation)
             else:
                 # if close to the edge, just erase the current hyperplane everywhere
                 for value in self._res.values():
