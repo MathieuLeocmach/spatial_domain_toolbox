@@ -359,7 +359,7 @@ class QuadraticToAbc:
         self.basis = quadratic_basis(N)
         self.index_c = 0
         self.indices_b = np.where(self.basis.sum(0)==1)[0][::-1]
-        self.indices_A = np.where(self.basis.sum(0)==2)[0]
+        self.indices_A = np.where(self.basis.sum(0)==2)[0][::-1]
 
     def c(self, r):
         """r is the result of metric-normalised correlations with the quadratic
@@ -381,11 +381,11 @@ hyperplane."""
         A = np.empty(r.shape[:-1]+(N,N), dtype=r.dtype)
         for i,j, k in zip(*np.triu_indices(N), self.indices_A):
             if i==j:
-                A[...,N-1-i,N-1-j] = r[...,k]
+                A[...,i,j] = r[...,k]
             else:
-                A[...,N-1-i,N-1-j] = r[...,k]
-                A[...,N-1-i,N-1-j] *= 0.5
-                A[...,N-1-j,N-1-i] = A[...,N-1-i,N-1-j]
+                A[...,i,j] = r[...,k]
+                A[...,i,j] *= 0.5
+                A[...,j,i] = A[...,i,j]
         return A
 
 def prepare_displacement_matrices_homogeneous(A1, b1, A2, b2, displacement=None):
@@ -422,7 +422,7 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
         displacement = np.zeros(N, dtype=A1.dtype)
     assert displacement.shape == (N,)
     # Integral part of the backward displacement vector
-    displ = -np.floor(0.5 + displacement).astype(np.int64)
+    displ = -np.rint(displacement).astype(np.int64)
     # Advect back A2 and b2 by rolling
     A = np.roll(A2, displ, axis=tuple(range(N)))
     Delta_b = -0.5*np.roll(b2, displ, axis=tuple(range(N)))

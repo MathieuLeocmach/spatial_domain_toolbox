@@ -35,9 +35,13 @@ def test_Separable_Correlation():
 
     #c0
     c0 = qAbc.c(resultsSC)
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,0,0], axis=1)][...,0], c0)
     assert np.unravel_index(np.argmax(c0), im0.shape) == (30,31,33)
     #b0
     b0 = qAbc.b(resultsSC)
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[1,0,0], axis=1)][...,0], b0[...,0])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,1,0], axis=1)][...,0], b0[...,1])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,0,1], axis=1)][...,0], b0[...,2])
     np.testing.assert_almost_equal(b0[...,0].min(), b0[32,31,33,0])
     np.testing.assert_almost_equal(b0[...,0].max(), b0[29,31,33,0])
     np.testing.assert_almost_equal(b0[...,1].min(), b0[30,32,33,1])
@@ -46,14 +50,23 @@ def test_Separable_Correlation():
     np.testing.assert_almost_equal(b0[...,2].max(), b0[30,31,31,2])
     #A0 diagonal
     A0 = qAbc.A(resultsSC)
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[2,0,0], axis=1)][...,0], A0[...,0,0])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,2,0], axis=1)][...,0], A0[...,1,1])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,0,2], axis=1)][...,0], A0[...,2,2])
     np.testing.assert_almost_equal(A0[...,0,0].min(), A0[29,31,33,0,0])
     np.testing.assert_almost_equal(A0[...,0,0].max(), A0[32,31,33,0,0])
-    np.testing.assert_almost_equal(A0[...,1,1].min(), A0[31,31,31,1,1])
-    np.testing.assert_almost_equal(A0[...,1,1].max(), A0[31,31,34,1,1])
+    np.testing.assert_almost_equal(A0[...,1,1].min(), A0[30,30,33,1,1])
+    np.testing.assert_almost_equal(A0[...,1,1].max(), A0[30,29,33,1,1])
     np.testing.assert_almost_equal(A0[...,2,2].min(), A0[30,31,32,2,2])
     np.testing.assert_almost_equal(A0[...,2,2].max(), A0[30,31,31,2,2])
     #A0 off diagonal
-    assert np.all(A0[...,0,1] == A0[...,1,0])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[1,1,0], axis=1)][...,0]/2, A0[...,0,1])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[0,1,1], axis=1)][...,0]/2, A0[...,1,2])
+    np.testing.assert_array_equal(resultsSC[...,np.all(cb.basis.T==[1,0,1], axis=1)][...,0]/2, A0[...,0,2])
+    #A0 must be symmetric
+    for i in range(A0.shape[-2]):
+        for j in range(A0.shape[-1]):
+            assert np.all(A0[...,i,j]==A0[...,j,i])
 
 
 
@@ -115,14 +128,18 @@ def test_1px_0():
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
+    #A must be symmetric
+    for i in range(A.shape[-2]):
+        for j in range(A.shape[-1]):
+            assert np.all(A[...,i,j]==A[...,j,i])
     M = memory_efficient.A_Deltab2G_h(A, Delta_b)
     Gh = np.empty_like(M)
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert np.rint(displ[30,31,33,0]) == 1
-    assert np.rint(displ[30,31,33,1]) == 0
-    assert np.rint(displ[30,31,33,2]) == 0
+    np.testing.assert_almost_equal(displ[30,31,33,0], 1,1)
+    np.testing.assert_almost_equal(displ[30,31,33,1], 0)
+    np.testing.assert_almost_equal(displ[30,31,33,2], 0)
     #initial guess of the displacement
     d0 = np.array([1,0,0])
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
@@ -133,9 +150,9 @@ def test_1px_0():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert np.rint(displ[30,31,33,0]) == 1
-    assert np.rint(displ[30,31,33,1]) == 0
-    assert np.rint(displ[30,31,33,2]) == 0
+    np.testing.assert_almost_equal(displ[30,31,33,0], 1)
+    np.testing.assert_almost_equal(displ[30,31,33,1], 0)
+    np.testing.assert_almost_equal(displ[30,31,33,2], 0)
 
 
 def test_1px_1():
@@ -162,14 +179,18 @@ def test_1px_1():
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1)
     assert np.all(Delta_b == -0.5*(b1-b0))
     assert np.all(A == 0.5*(A0+A1))
+    #A must be symmetric
+    for i in range(A.shape[-2]):
+        for j in range(A.shape[-1]):
+            assert np.all(A[...,i,j]==A[...,j,i])
     M = memory_efficient.A_Deltab2G_h(A, Delta_b)
     Gh = np.empty_like(M)
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert np.rint(displ[30,31,33,0]) == 0
-    assert np.rint(displ[30,31,33,1]) == 1
-    assert np.rint(displ[30,31,33,2]) == 0
+    np.testing.assert_almost_equal(displ[30,31,33,0], 0)
+    np.testing.assert_almost_equal(displ[30,31,33,1], 1,1)
+    np.testing.assert_almost_equal(displ[30,31,33,2], 0)
     #initial guess of the displacement
     d0 = np.array([0,1,0])
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
@@ -180,9 +201,9 @@ def test_1px_1():
     for z, m in enumerate(cb2.generator(M)):
         Gh[z] = mSNC2(m, z, zlen=len(M), n_fields=N*(N+3)//2)[...,0]
     displ = memory_efficient.Gh2displ(Gh[...,:-N], Gh[...,-N:])
-    assert np.rint(displ[30,31,33,0]) == 0
-    assert np.rint(displ[30,31,33,1]) == 1
-    assert np.rint(displ[30,31,33,2]) == 0
+    np.testing.assert_almost_equal(displ[30,31,33,0], 0)
+    np.testing.assert_almost_equal(displ[30,31,33,1], 1,1)
+    np.testing.assert_almost_equal(displ[30,31,33,2], 0)
 
 def test_Large_Separable_Correlation():
     """Separable correlation on larger array"""
@@ -195,17 +216,36 @@ def test_Large_Separable_Correlation():
         resultsSC3[z] = mSC(r)
 
     #c0
-    c0 = qAbc.c(resultsSC3[30])
-    assert np.unravel_index(np.argmax(c0), im3.shape[1:]) == (31,33)
+    c0 = qAbc.c(resultsSC3)
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,0,0], axis=1)][...,0], c0)
+    assert np.unravel_index(np.argmax(c0), im3.shape) == (30,31,33)
     #b0
-    b0 = qAbc.b(resultsSC3[30])
-    np.testing.assert_almost_equal(b0[...,1].min(), b0[32,33,1])
-    np.testing.assert_almost_equal(b0[...,1].max(), b0[29,33,1])
-    np.testing.assert_almost_equal(b0[...,2].min(), b0[31,34,2])
-    np.testing.assert_almost_equal(b0[...,2].max(), b0[31,31,2])
+    b0 = qAbc.b(resultsSC3)
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[1,0,0], axis=1)][...,0], b0[...,0])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,1,0], axis=1)][...,0], b0[...,1])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,0,1], axis=1)][...,0], b0[...,2])
+    np.testing.assert_almost_equal(b0[...,0].min(), b0[32,31,33,0])
+    np.testing.assert_almost_equal(b0[...,0].max(), b0[29,31,33,0])
+    np.testing.assert_almost_equal(b0[...,1].min(), b0[30,32,33,1])
+    np.testing.assert_almost_equal(b0[...,1].max(), b0[30,29,33,1])
+    np.testing.assert_almost_equal(b0[...,2].min(), b0[30,31,34,2])
+    np.testing.assert_almost_equal(b0[...,2].max(), b0[30,31,31,2])
     #A0 diagonal
-    A0 = qAbc.A(resultsSC3[30])
-    np.testing.assert_almost_equal(A0[...,2,2].min(), A0[31,32,2,2])
-    np.testing.assert_almost_equal(A0[...,2,2].max(), A0[31,31,2,2])
+    A0 = qAbc.A(resultsSC3)
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[2,0,0], axis=1)][...,0], A0[...,0,0])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,2,0], axis=1)][...,0], A0[...,1,1])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,0,2], axis=1)][...,0], A0[...,2,2])
+    np.testing.assert_almost_equal(A0[...,0,0].min(), A0[29,31,33,0,0])
+    np.testing.assert_almost_equal(A0[...,0,0].max(), A0[32,31,33,0,0])
+    np.testing.assert_almost_equal(A0[...,1,1].min(), A0[30,30,33,1,1])
+    np.testing.assert_almost_equal(A0[...,1,1].max(), A0[30,29,33,1,1])
+    np.testing.assert_almost_equal(A0[...,2,2].min(), A0[30,31,32,2,2])
+    np.testing.assert_almost_equal(A0[...,2,2].max(), A0[30,31,31,2,2])
     #A0 off diagonal
-    assert np.all(A0[...,0,1] == A0[...,1,0])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[1,1,0], axis=1)][...,0]/2, A0[...,0,1])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[0,1,1], axis=1)][...,0]/2, A0[...,1,2])
+    np.testing.assert_array_equal(resultsSC3[...,np.all(cb.basis.T==[1,0,1], axis=1)][...,0]/2, A0[...,0,2])
+    #A0 must be symmetric
+    for i in range(A0.shape[-2]):
+        for j in range(A0.shape[-1]):
+            assert np.all(A0[...,i,j]==A0[...,j,i])
