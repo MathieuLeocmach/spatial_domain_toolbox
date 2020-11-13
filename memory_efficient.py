@@ -429,15 +429,21 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     #take care of the margins by repeating the last available element of A2 or b2
     for dim, d in enumerate(displ):
         if d >= 0:
+            print(f"dim={dim}\t{slice(0,d)}")
             # Use only A1 where A2 is not available
             A[(slice(None,None),)*dim + (slice(0,d),)] = A1[(slice(None,None),)*dim + (slice(0,d),)]
-            # Use the last availbale element of b2
-            Delta_b[(slice(None,None),)*dim + (slice(0,d),)] = -b2[(slice(None,None),)*dim + (slice(0,1),)]
+            # Use only b1 where b2 is not available (aims for a displacement equal to the homogeneous input)
+            Delta_b[(slice(None,None),)*dim + (slice(0,d),)] = -0.5*b1[(slice(None,None),)*dim + (slice(0,d),)]
+            # Use the last available element of b2
+            #Delta_b[(slice(None,None),)*dim + (slice(0,d),)] = -b2[(slice(None,None),)*dim + (slice(0,1),)]
         else:
+            print(f"dim={dim}\t{slice(d,None)}")
             # Use only A1 where A2 is not available
-            A[(slice(None,None),)*dim + (slice(-d,None),)] = A1[(slice(None,None),)*dim + (slice(-d,None),)]
-            # Use the last availbale element of b2
-            Delta_b[(slice(None,None),)*dim + (slice(-d,None),)] = -0.5*b2[(slice(None,None),)*dim + (slice(-1,None),)]
+            A[(slice(None,None),)*dim + (slice(d,None),)] = A1[(slice(None,None),)*dim + (slice(d,None),)]
+            # Use only b1 where b2 is not available (aims for a displacement equal to the homogeneous input)
+            Delta_b[(slice(None,None),)*dim + (slice(d,None),)] = -0.5*b1[(slice(None,None),)*dim + (slice(d,None),)]
+            # Use the last available element of b2
+            #Delta_b[(slice(None,None),)*dim + (slice(-d,None),)] = -0.5*b2[(slice(None,None),)*dim + (slice(-1,None),)]
     #Advected average for A1 and A2
     A += A1
     A *= 0.5
