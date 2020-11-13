@@ -47,9 +47,9 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
     Delta_b = np.zeros(b1.shape, dtype=A1.dtype)
     # If displacement is zero, we will get A = (A1+A2)/2 and b = -(b2-b1)/2.
     for index in np.ndindex(shape):
-        # We take the opposite of the displacement in order to be able to bring
+        # We take the integer part of the displacement in order to be able to bring
         # A2 and b2 on A1 and b1
-        d = -np.floor(0.5 + displacement[index]).astype(np.int64)
+        d = np.rint(displacement[index]).astype(np.int64)
         #truncate the rounded displacement so that no pixel goes out
         for dim in range(N):
             if index[dim] + d[dim] <0:
@@ -64,7 +64,7 @@ Delta_b: advected difference of b2 and b1 (Eq. 7.33)
         # advected average of the two A matrices (Eq. 7.32)
         A[index] = (A1[index] + A22[index2]) / 2
         # advected difference of the two vectors b, to which we add back the
-        # forward rounded a priori displacement.(Eq. 7.33)
-        df = -d.astype(A.dtype)
+        # rounded a priori displacement.(Eq. 7.33)
+        df = d.astype(A.dtype)
         Delta_b[index] = -0.5*(b22[index2] - b1[index]) + A[index] @ df
     return  A, Delta_b
