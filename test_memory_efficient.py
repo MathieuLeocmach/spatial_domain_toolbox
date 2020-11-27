@@ -143,7 +143,7 @@ def test_1px_0():
     #initial guess of the displacement
     d0 = np.array([1,0,0])
     A, Delta_b = memory_efficient.prepare_displacement_matrices_homogeneous(A0, b0, A1, b1, d0)
-    assert np.all(A == A0)
+    np.testing.assert_array_almost_equal(A, A0)
     #np.testing.assert_almost_equal(Delta_b, A @ d0, 0)
     M = memory_efficient.A_Deltab2G_h(A, Delta_b)
     Gh = np.empty_like(M)
