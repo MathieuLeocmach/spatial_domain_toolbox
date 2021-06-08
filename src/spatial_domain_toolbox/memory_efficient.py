@@ -301,6 +301,9 @@ class metrics_SNC:
                 Ginv[l] = np.linalg.pinv(G, hermitian=True)
             self.Ginvs[z] = Ginv.reshape(self.Ginvs.shape[1:])
 
+    def central_Ginv(self):
+        """Get the inverse metrics far from any edge"""
+        return self.Ginvs[tuple(s//2 for s in self.Ginvs.shape[:-2])]
 
     def expand_Ginv(self, Ginv, shape):
         for dim in range(Ginv.ndim-2):
